@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, UserPlus, User, Trash2, Minus, Plus, Banknote, Landmark, QrCode, Wallet, ArrowRight, ArrowLeft, Check, AlertTriangle, Stethoscope } from 'lucide-react'
+import { Search, UserPlus, User, Trash2, CreditCard, Minus, Plus, Banknote, Landmark, QrCode, Wallet, ArrowRight, ArrowLeft, Check, AlertTriangle, Stethoscope } from 'lucide-react'
 import { api, money, openPrint, CATEGORY_LABEL, METHOD_LABEL } from '../api'
 import { useApi, useAction, useSession, ApprovalModal, Empty, initial } from '../ui'
 import { CustomerForm } from './forms'
@@ -13,12 +13,13 @@ interface Line {
   unit_price: number
   discount: number
   vet_id: string
+  instruction: string
 }
 
 const CAT_COLOR: Record<string, string> = {
   service: '#2b7bc4', procedure: '#6b4fc4', vaccine: '#c2416b', medicine: '#17895a', food: '#d9741c', supply: '#5a6b7c', other: '#5a6b7c'
 }
-const METHOD_ICON: Record<string, any> = { cash: Banknote, transfer: Landmark, promptpay: QrCode, deposit: Wallet }
+const METHOD_ICON: Record<string, any> = { cash: Banknote, transfer: Landmark, promptpay: QrCode, card: CreditCard, deposit: Wallet }
 let lineKey = 1
 const r2 = (n: number): number => Math.round(n * 100) / 100
 
@@ -83,7 +84,7 @@ export default function Pos() {
     setLines((ls) => {
       const same = ls.find((l) => l.product.id === p.id)
       if (same) return ls.map((l) => (l === same ? { ...l, qty: l.qty + 1 } : l))
-      return [...ls, { key: lineKey++, product: p, name: p.name, qty: 1, unit_price: p.price, discount: 0, vet_id: p.needs_vet ? defaultVet : '' }]
+      return [...ls, { key: lineKey++, product: p, name: p.name, qty: 1, unit_price: p.price, discount: 0, vet_id: p.needs_vet ? defaultVet : '', instruction: p.category === 'medicine' ? p.label_th ?? '' : '' }]
     })
   const patch = (key: number, v: Partial<Line>): void => setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...v } : l)))
   const remove = (key: number): void => setLines((ls) => ls.filter((l) => l.key !== key))
@@ -111,7 +112,7 @@ export default function Pos() {
       pet_id: petId || undefined,
       visit_id: visitId || undefined,
       queue_id: queueId || undefined,
-      items: lines.map((l) => ({ product_id: l.product.id, name: l.name, qty: l.qty, unit_price: l.unit_price, discount: l.discount, vet_id: l.vet_id || null })),
+      items: lines.map((l) => ({ product_id: l.product.id, name: l.name, qty: l.qty, unit_price: l.unit_price, discount: l.discount, vet_id: l.vet_id || null, instruction: l.instruction || undefined })),
       bill_discount: billDiscountBaht,
       payments,
       note,
@@ -119,6 +120,7 @@ export default function Pos() {
     })
     refreshShift()
     openPrint(`/print/invoice/${res.id}`)
+    if (lines.some((l) => l.product.category === 'medicine')) openPrint(`/print/labels/${res.id}`)
     reset()
     if (queueId) nav('/')
     return res
@@ -160,6 +162,7 @@ export default function Pos() {
         ))}
       </div>
 
+      {step === 1 && <WaitingToPay />}
       {step === 1 && (
         <StepCustomer
           customer={customer}
@@ -177,7 +180,13 @@ export default function Pos() {
             <div className="card">
               <div className="bigsearch" style={{ marginBottom: 12 }}>
                 <Search />
-                <input autoFocus placeholder="ค้นหาสินค้า/บริการ" value={q} onChange={(e) => setQ(e.target.value)} style={{ fontSize: 17, padding: '12px 14px 12px 52px' }} />
+                <input autoFocus placeholder="ค้นหาสินค้า/บริการ หรือสแกนบาร์โค้ด แล้วกด Enter" value={q} onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    const exact = (products ?? []).find((p) => p.sku && p.sku.toLowerCase() === q.trim().toLowerCase())
+                    const hit = exact ?? (shown.length === 1 ? shown[0] : null)
+                    if (hit) { add(hit); setQ('') }
+                  }} style={{ fontSize: 17, padding: '12px 14px 12px 52px' }} />
               </div>
               <div className="chips" style={{ marginBottom: 14 }}>
                 <button className={`chip ${cat === '' ? 'active' : ''}`} onClick={() => setCat('')}>ทั้งหมด</button>
@@ -243,6 +252,9 @@ export default function Pos() {
                       <input type="number" style={{ width: 72, padding: '6px 8px' }} placeholder="ลด ฿" value={l.discount || ''} onChange={(e) => patch(l.key, { discount: Number(e.target.value) || 0 })} title="ส่วนลดรายการ" />
                       <button className="ghost" style={{ color: 'var(--bad)', marginLeft: 'auto' }} aria-label="ลบ" onClick={() => remove(l.key)}><Trash2 /></button>
                     </div>
+                    {l.product.category === 'medicine' && (
+                      <input style={{ marginTop: 8, padding: '7px 10px' }} placeholder="วิธีใช้ยา (พิมพ์บนฉลาก) เช่น กินครั้งละ 1 เม็ด เช้า-เย็น หลังอาหาร" value={l.instruction} onChange={(e) => patch(l.key, { instruction: e.target.value })} />
+                    )}
                     {l.product.needs_vet ? (
                       <select style={{ marginTop: 8, padding: '7px 10px', borderColor: l.vet_id ? undefined : 'var(--bad)' }} value={l.vet_id} onChange={(e) => patch(l.key, { vet_id: e.target.value })}>
                         <option value="">— เลือกสัตวแพทย์ผู้ทำ —</option>
@@ -297,6 +309,26 @@ export default function Pos() {
         </div>
       )}
     </>
+  )
+}
+
+function WaitingToPay() {
+  const nav = useNavigate()
+  const [q] = useApi<any[]>('queue.today')
+  const list = (q ?? []).filter((x) => x.status === 'to_pay')
+  if (!list.length) return null
+  return (
+    <div className="card" style={{ marginBottom: 16, borderLeft: '5px solid var(--blue)', borderRadius: 0 }}>
+      <h2 style={{ marginBottom: 10 }}>รอคิดเงิน ({list.length})</h2>
+      <div className="row">
+        {list.map((x) => (
+          <button key={x.id} className="pet-chip" onClick={() => nav(`/pos?customer=${x.customer_id}&pet=${x.pet_id}&queue=${x.id}${x.visit_id ? `&visit=${x.visit_id}` : ''}${x.vet_id ? `&vet=${x.vet_id}` : ''}`)}>
+            <b>คิว {x.queue_no} · {x.pet_name}</b>
+            <span className="small muted">{x.owner_name} · {x.reason}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -389,7 +421,7 @@ function StepCustomer(props: {
   )
 }
 
-function StepPay(props: {
+export function StepPay(props: {
   total: number
   customer: any
   needsApproval: boolean
@@ -399,7 +431,7 @@ function StepPay(props: {
   onSubmit: (payments: { method: string; amount: number }[], approval?: any) => Promise<any>
 }) {
   const depositBal = props.customer?.deposit_balance ?? 0
-  const methods = ['cash', 'transfer', 'promptpay', ...(depositBal > 0 ? ['deposit'] : [])]
+  const methods = ['cash', 'transfer', 'promptpay', 'card', ...(depositBal > 0 ? ['deposit'] : [])]
   const [amounts, setAmounts] = useState<Record<string, string>>({ cash: String(props.total) })
   const [tendered, setTendered] = useState('')
   const [allowUnpaid, setAllowUnpaid] = useState(false)

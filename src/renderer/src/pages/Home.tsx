@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search, UserPlus, ShoppingBag, Syringe, Stethoscope, Clock, CreditCard, CheckCircle2, ListPlus, FileText,
-  TrendingUp, Receipt, AlertTriangle, X, ChevronRight, Banknote
+  TrendingUp, Receipt, AlertTriangle, X, ChevronRight, Banknote, BedDouble
 } from 'lucide-react'
 import { api, money, thDate } from '../api'
 import { useApi, useAction, useSession, Modal, Field, SpeciesIcon, Hint, initial } from '../ui'
@@ -68,13 +68,13 @@ export default function Home() {
           <div className="ico" style={{ background: 'var(--ok-soft)', color: 'var(--ok)' }}><ShoppingBag size={28} /></div>
           <div><b>ขายของหน้าร้าน</b><span>อาหาร ทราย ยา (ไม่ต้องตรวจ)</span></div>
         </button>
-        <button className="action" onClick={() => nav('/vaccines')}>
+        <button className="action" onClick={() => nav('/appointments')}>
           <div className="ico" style={{ background: 'var(--purple-soft)', color: 'var(--purple)' }}><Syringe size={28} /></div>
-          <div><b>นัดวัคซีน {d?.vaccines_due ? `(${d.vaccines_due})` : ''}</b><span>รายชื่อที่ต้องโทรแจ้งเจ้าของ</span></div>
+          <div><b>นัดวันนี้ {d?.appt_today ? `(${d.appt_today})` : ''}</b><span>{d?.appt_uncalled ? `ยังไม่ได้โทรแจ้ง ${d.appt_uncalled} นัด` : 'นัดหมายและวัคซีนครบกำหนด'}</span></div>
         </button>
-        <button className="action" onClick={() => nav('/finance/shift')}>
-          <div className="ico" style={{ background: 'var(--orange-soft)', color: 'var(--orange)' }}><Banknote size={28} /></div>
-          <div><b>เปิด/ปิดกะ</b><span>นับเงินในลิ้นชักตอนเปิดและปิดร้าน</span></div>
+        <button className="action" onClick={() => nav('/admissions')}>
+          <div className="ico" style={{ background: 'var(--orange-soft)', color: 'var(--orange)' }}><BedDouble size={28} /></div>
+          <div><b>Admit / ฝากเลี้ยง {d?.admitted ? `(${d.admitted})` : ''}</b><span>ลงค่าใช้จ่ายรายวัน / รับกลับ</span></div>
         </button>
       </div>
 

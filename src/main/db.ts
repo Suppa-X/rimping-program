@@ -17,7 +17,11 @@ export const SYNCED_TABLES = [
   'invoice_items',
   'payments',
   'shifts',
-  'queue'
+  'queue',
+  'attachments',
+  'admissions',
+  'admission_charges',
+  'appointments'
 ] as const
 
 const MIGRATIONS: string[] = [
@@ -300,6 +304,152 @@ const MIGRATIONS: string[] = [
     updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
   CREATE INDEX idx_queue_date ON queue(queue_date, queue_no);
+  `,
+  /* 3 — features from the old VETSERVER program */ `
+  ALTER TABLE customers ADD COLUMN province TEXT;
+  ALTER TABLE customers ADD COLUMN postcode TEXT;
+  ALTER TABLE customers ADD COLUMN member_since TEXT;
+  ALTER TABLE customers ADD COLUMN member_expire TEXT;
+
+  ALTER TABLE pets ADD COLUMN code TEXT;
+  CREATE UNIQUE INDEX idx_pets_code ON pets(code);
+
+  ALTER TABLE visits ADD COLUMN history TEXT;
+  ALTER TABLE visits ADD COLUMN blood_result TEXT;
+  ALTER TABLE visits ADD COLUMN xray TEXT;
+  ALTER TABLE visits ADD COLUMN lab_other TEXT;
+  ALTER TABLE visits ADD COLUMN diff_diag TEXT;
+  ALTER TABLE visits ADD COLUMN treatment TEXT;
+  ALTER TABLE visits ADD COLUMN prescription TEXT;
+
+  CREATE TABLE attachments (
+    id         TEXT PRIMARY KEY,
+    pet_id     TEXT NOT NULL REFERENCES pets(id),
+    visit_id   TEXT,
+    kind       TEXT,
+    file_name  TEXT NOT NULL,
+    stored_as  TEXT NOT NULL,
+    created_by TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  CREATE INDEX idx_attach_pet ON attachments(pet_id, visit_id);
+
+  -- products: new categories (grooming, boarding) + drug label + controlled drug flag
+  CREATE TABLE products_v3 (
+    id          TEXT PRIMARY KEY,
+    sku         TEXT UNIQUE,
+    name        TEXT NOT NULL,
+    category    TEXT NOT NULL CHECK (category IN ('service','procedure','vaccine','medicine','food','supply','grooming','boarding','other')),
+    unit        TEXT NOT NULL DEFAULT 'ชิ้น',
+    price       REAL NOT NULL DEFAULT 0,
+    avg_cost    REAL NOT NULL DEFAULT 0,
+    stock_qty   REAL NOT NULL DEFAULT 0,
+    min_stock   REAL NOT NULL DEFAULT 0,
+    track_stock INTEGER NOT NULL DEFAULT 1,
+    vat_type    TEXT NOT NULL DEFAULT 'vat' CHECK (vat_type IN ('vat','exempt')),
+    needs_vet   INTEGER NOT NULL DEFAULT 0,
+    drug_group  TEXT,
+    label_th    TEXT,
+    label_en    TEXT,
+    controlled  INTEGER NOT NULL DEFAULT 0,
+    note        TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  INSERT INTO products_v3 (id,sku,name,category,unit,price,avg_cost,stock_qty,min_stock,track_stock,vat_type,needs_vet,note,active,created_at,updated_at)
+    SELECT id,sku,name,category,unit,price,avg_cost,stock_qty,min_stock,track_stock,vat_type,needs_vet,note,active,created_at,updated_at FROM products;
+  DROP TABLE products;
+  ALTER TABLE products_v3 RENAME TO products;
+  CREATE INDEX idx_products_name ON products(name);
+
+  -- payments: add card
+  CREATE TABLE payments_v3 (
+    id          TEXT PRIMARY KEY,
+    invoice_id  TEXT REFERENCES invoices(id),
+    customer_id TEXT REFERENCES customers(id),
+    kind        TEXT NOT NULL CHECK (kind IN ('payment','deposit','refund')),
+    method      TEXT NOT NULL CHECK (method IN ('cash','transfer','promptpay','card','deposit')),
+    amount      REAL NOT NULL,
+    note        TEXT,
+    shift_id    TEXT REFERENCES shifts(id),
+    created_by  TEXT NOT NULL REFERENCES users(id),
+    paid_at     TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  INSERT INTO payments_v3 SELECT * FROM payments;
+  DROP TABLE payments;
+  ALTER TABLE payments_v3 RENAME TO payments;
+  CREATE INDEX idx_payments_invoice  ON payments(invoice_id);
+  CREATE INDEX idx_payments_shift    ON payments(shift_id);
+  CREATE INDEX idx_payments_customer ON payments(customer_id);
+
+  ALTER TABLE invoice_items ADD COLUMN instruction TEXT;
+  ALTER TABLE invoice_items ADD COLUMN from_admission INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE invoices ADD COLUMN admission_id TEXT;
+
+  -- Admit / boarding: a stay that collects daily charges and is billed at discharge
+  CREATE TABLE admissions (
+    id            TEXT PRIMARY KEY,
+    admit_no      TEXT NOT NULL UNIQUE,
+    pet_id        TEXT NOT NULL REFERENCES pets(id),
+    customer_id   TEXT NOT NULL REFERENCES customers(id),
+    kind          TEXT NOT NULL DEFAULT 'ipd' CHECK (kind IN ('ipd','boarding')),
+    cage          TEXT,
+    reason        TEXT,
+    vet_id        TEXT REFERENCES users(id),
+    admitted_at   TEXT NOT NULL,
+    expected_out  TEXT,
+    discharged_at TEXT,
+    status        TEXT NOT NULL DEFAULT 'admitted' CHECK (status IN ('admitted','discharged','cancelled')),
+    invoice_id    TEXT REFERENCES invoices(id),
+    note          TEXT,
+    created_by    TEXT REFERENCES users(id),
+    created_at    TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at    TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  CREATE INDEX idx_admissions_status ON admissions(status);
+
+  CREATE TABLE admission_charges (
+    id           TEXT PRIMARY KEY,
+    admission_id TEXT NOT NULL REFERENCES admissions(id),
+    charge_date  TEXT NOT NULL,
+    product_id   TEXT NOT NULL REFERENCES products(id),
+    name         TEXT NOT NULL,
+    category     TEXT NOT NULL,
+    unit         TEXT,
+    qty          REAL NOT NULL,
+    unit_price   REAL NOT NULL,
+    discount     REAL NOT NULL DEFAULT 0,
+    unit_cost    REAL NOT NULL DEFAULT 0,
+    vet_id       TEXT REFERENCES users(id),
+    note         TEXT,
+    voided       INTEGER NOT NULL DEFAULT 0,
+    created_by   TEXT REFERENCES users(id),
+    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  CREATE INDEX idx_charges_admission ON admission_charges(admission_id, charge_date);
+
+  CREATE TABLE appointments (
+    id          TEXT PRIMARY KEY,
+    pet_id      TEXT NOT NULL REFERENCES pets(id),
+    customer_id TEXT NOT NULL REFERENCES customers(id),
+    appt_date   TEXT NOT NULL,
+    appt_time   TEXT,
+    topic       TEXT NOT NULL,
+    detail      TEXT,
+    vet_id      TEXT REFERENCES users(id),
+    status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','done','cancelled','no_show')),
+    called_at   TEXT,
+    visit_id    TEXT,
+    created_by  TEXT REFERENCES users(id),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+  CREATE INDEX idx_appt_date ON appointments(appt_date, status);
   `
 ]
 
@@ -317,13 +467,19 @@ export function openDb(file: string): DatabaseSync {
   db = new DatabaseSync(file)
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;')
   const { user_version } = db.prepare('PRAGMA user_version').get() as { user_version: number }
+  // Some migrations rebuild tables (to widen CHECK lists), which needs FK enforcement off.
+  db.exec('PRAGMA foreign_keys = OFF')
   for (let v = user_version; v < MIGRATIONS.length; v++) {
     tx(() => {
       db.exec(MIGRATIONS[v])
+      const broken = db.prepare('PRAGMA foreign_key_check').all()
+      if (broken.length) throw new Error(`migration ${v + 1} broke foreign keys`)
       db.exec(`PRAGMA user_version = ${v + 1}`)
     })
   }
+  db.exec('PRAGMA foreign_keys = ON')
   db.exec(syncTriggers())
+  backfillPetCodes()
   seedDefaults()
   return db
 }
@@ -435,6 +591,38 @@ export function nextDocNo(prefix: string, width = 4): string {
     next
   )
   return `${prefix}-${String(next).padStart(width, '0')}`
+}
+
+/** Raw running counter (no formatting). */
+export function nextCounter(key: string): number {
+  const row = one<{ last_no: number }>('SELECT last_no FROM doc_counters WHERE prefix = ?', key)
+  const next = (row?.last_no ?? 0) + 1
+  run(
+    'INSERT INTO doc_counters (prefix,last_no) VALUES (?,?) ON CONFLICT(prefix) DO UPDATE SET last_no = excluded.last_no',
+    key,
+    next
+  )
+  return next
+}
+
+/** Buddhist-era 2-digit year, e.g. 2026 → "69". */
+export const beYear = (d = new Date()): string => String(d.getFullYear() + 543).slice(2)
+
+/** Pet codes follow the old program: <BE year>/<running number of that year>, e.g. 69/15. */
+export function nextPetCode(): string {
+  const yy = beYear()
+  for (;;) {
+    const code = `${yy}/${nextCounter(`PET${yy}`)}`
+    if (!one('SELECT 1 FROM pets WHERE code = ?', code)) return code
+  }
+}
+
+function backfillPetCodes(): void {
+  const missing = all<{ id: string }>('SELECT id FROM pets WHERE code IS NULL ORDER BY created_at')
+  if (!missing.length) return
+  tx(() => {
+    for (const p of missing) update('pets', p.id, { code: nextPetCode() })
+  })
 }
 
 function seedDefaults(): void {

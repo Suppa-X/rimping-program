@@ -25,6 +25,7 @@ export default function InvoiceDetail() {
           </div>
         </div>
         <button className="secondary" onClick={() => openPrint(`/print/invoice/${inv.id}`)}>🖨️ พิมพ์ใบเสร็จ</button>
+        {inv.items.some((it: any) => it.category === 'medicine') && <button className="secondary" onClick={() => openPrint(`/print/labels/${inv.id}`)}>💊 พิมพ์ฉลากยา</button>}
         {inv.status !== 'void' && due > 0 && <button className="ok" onClick={() => setPaying(true)}>💵 รับชำระยอดค้าง</button>}
         {inv.status !== 'void' && <button className="danger" onClick={() => setVoiding(true)}>ยกเลิกบิล</button>}
       </div>

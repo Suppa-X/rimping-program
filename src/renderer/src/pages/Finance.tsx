@@ -1,9 +1,10 @@
 import { NavLink, useParams } from 'react-router-dom'
-import { BarChart3, Receipt, Clock3, Banknote } from 'lucide-react'
+import { BarChart3, Receipt, Clock3, Banknote, FileSpreadsheet } from 'lucide-react'
 import { useApi, useSession } from '../ui'
 import Reports from './Reports'
 import Invoices from './Invoices'
 import Shift from './Shift'
+import SpecialReports from './SpecialReports'
 
 /** การเงิน tab: overview, all bills, outstanding bills and the cash drawer in one place. */
 export default function Finance() {
@@ -14,7 +15,8 @@ export default function Finance() {
     ...(can('reports') ? [{ key: 'overview', label: 'ภาพรวม/รายงาน', icon: BarChart3 }] : []),
     { key: 'bills', label: 'บิลทั้งหมด', icon: Receipt },
     { key: 'outstanding', label: 'ค้างชำระ', icon: Clock3, count: d?.outstanding_count },
-    { key: 'shift', label: 'กะ/ลิ้นชักเงิน', icon: Banknote }
+    { key: 'shift', label: 'กะ/ลิ้นชักเงิน', icon: Banknote },
+    ...(can('reports') ? [{ key: 'registers', label: 'รายงานยาควบคุม/ปศุสัตว์/สต็อก', icon: FileSpreadsheet }] : [])
   ]
   return (
     <>
@@ -35,6 +37,7 @@ export default function Finance() {
       {tab === 'bills' && <Invoices key="bills" />}
       {tab === 'outstanding' && <Invoices key="outstanding" preset="outstanding" />}
       {tab === 'shift' && <Shift />}
+      {tab === 'registers' && can('reports') && <SpecialReports />}
     </>
   )
 }

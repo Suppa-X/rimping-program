@@ -5,14 +5,17 @@ import { authApi } from './auth'
 import { clinicApi } from './api/clinic'
 import { salesApi } from './api/sales'
 import { reportsApi } from './api/reports'
-import { systemApi, backupNow, lastBackupDate } from './api/system'
+import { admissionsApi } from './api/admissions'
+import { systemApi, demoApi, backupNow, lastBackupDate } from './api/system'
 
 const handlers: Record<string, (args: any) => any> = {
   ...authApi,
   ...clinicApi,
   ...salesApi,
   ...reportsApi,
-  ...systemApi
+  ...admissionsApi,
+  ...systemApi,
+  ...demoApi
 }
 
 let mainWindow: BrowserWindow | null = null

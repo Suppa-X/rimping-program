@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Home as HomeIcon, PawPrint, ShoppingCart, Syringe, Package, Wallet, Settings as SettingsIcon,
-  LogOut, KeyRound, ChevronDown, CircleCheck, CircleAlert, Delete
+  Home as HomeIcon, PawPrint, ShoppingCart, Package, Wallet, Settings as SettingsIcon,
+  LogOut, KeyRound, BedDouble, CalendarDays, LineChart, ChevronDown, CircleCheck, CircleAlert, Delete
 } from 'lucide-react'
 import logo from './assets/logo.png'
 import { api, money, ROLE_LABEL, thDate, todayStr } from './api'
@@ -14,7 +14,12 @@ import PetDetail from './pages/PetDetail'
 import Pos from './pages/Pos'
 import InvoiceDetail from './pages/InvoiceDetail'
 import Products from './pages/Products'
-import Vaccines from './pages/Vaccines'
+import Appointments from './pages/Appointments'
+import Admissions from './pages/Admissions'
+import AdmissionDetail from './pages/AdmissionDetail'
+import PrintAppointment from './pages/PrintAppointment'
+import PrintLabels from './pages/PrintLabels'
+import Executive from './pages/Executive'
 import Finance from './pages/Finance'
 import Settings from './pages/Settings'
 import PrintInvoice from './pages/PrintInvoice'
@@ -25,6 +30,8 @@ export default function App() {
     return (
       <Routes>
         <Route path="/print/invoice/:id" element={<PrintInvoice />} />
+        <Route path="/print/appointment/:id" element={<PrintAppointment />} />
+        <Route path="/print/labels/:id" element={<PrintLabels />} />
       </Routes>
     )
   }
@@ -69,9 +76,11 @@ function Shell() {
     { to: '/', end: true, icon: HomeIcon, label: 'งานวันนี้', badge: counts.queue_waiting },
     { to: '/customers', icon: PawPrint, label: 'ลูกค้า & สัตว์' },
     { to: '/pos', icon: ShoppingCart, label: 'ขาย / คิดเงิน' },
-    { to: '/vaccines', icon: Syringe, label: 'นัดวัคซีน', badge: counts.vaccines_due },
+    { to: '/appointments', icon: CalendarDays, label: 'นัดหมาย', badge: (counts.appt_today ?? 0) + (counts.vaccines_due ?? 0) },
+    { to: '/admissions', icon: BedDouble, label: 'Admit/ฝากเลี้ยง', badge: counts.admitted },
     { to: '/products', icon: Package, label: 'คลังสินค้า', badge: counts.low_stock },
     { to: '/finance', icon: Wallet, label: 'การเงิน' },
+    ...(me.perms.includes('reports') ? [{ to: '/executive', icon: LineChart, label: 'สรุปผู้บริหาร' }] : []),
     { to: '/settings', icon: SettingsIcon, label: 'ตั้งค่า' }
   ]
 
@@ -126,12 +135,16 @@ function Shell() {
               <Route path="/customers/:id" element={<CustomerDetail />} />
               <Route path="/pets/:id" element={<PetDetail />} />
               <Route path="/pos" element={<Pos />} />
-              <Route path="/vaccines" element={<Vaccines />} />
+              <Route path="/vaccines" element={<Navigate to="/appointments?tab=vaccines" replace />} />
+              <Route path="/appointments" element={<Appointments />} />
+              <Route path="/admissions" element={<Admissions />} />
+              <Route path="/admissions/:id" element={<AdmissionDetail />} />
               <Route path="/products" element={<Products />} />
               <Route path="/finance" element={<Finance />} />
               <Route path="/finance/:tab" element={<Finance />} />
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/executive" element={<Executive />} />
             </Routes>
           </div>
         </div>

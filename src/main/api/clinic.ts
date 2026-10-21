@@ -1,4 +1,7 @@
-import { all, one, insert, update, uid, audit, tx, today, now, nextDocNo } from '../db'
+import { app, dialog, shell, BrowserWindow } from 'electron'
+import { join, extname, basename } from 'node:path'
+import { mkdirSync, copyFileSync, readFileSync } from 'node:fs'
+import { all, one, insert, update, uid, audit, tx, today, now, nextDocNo, nextPetCode } from '../db'
 import { requireUser, requirePerm } from '../auth'
 
 function addDays(date: string, days: number): string {
@@ -72,13 +75,13 @@ export const clinicApi = {
     const q = `%${(a.q ?? '').trim()}%`
     return all(
       `SELECT c.*,
-         (SELECT GROUP_CONCAT(p.name, ', ') FROM pets p WHERE p.customer_id = c.id AND p.active = 1) AS pet_names,
+         (SELECT GROUP_CONCAT(p.name || COALESCE(' (' || p.code || ')', ''), ', ') FROM pets p WHERE p.customer_id = c.id AND p.active = 1) AS pet_names,
          (SELECT COALESCE(SUM(i.total - i.paid_amount),0) FROM invoices i
             WHERE i.customer_id = c.id AND i.status IN ('unpaid','partial')) AS outstanding
        FROM customers c
        WHERE c.active = 1 AND (
          c.name LIKE ?1 OR c.phone LIKE ?1 OR c.phone2 LIKE ?1 OR c.code LIKE ?1 OR
-         EXISTS (SELECT 1 FROM pets p WHERE p.customer_id = c.id AND p.name LIKE ?1 AND p.active = 1))
+         EXISTS (SELECT 1 FROM pets p WHERE p.customer_id = c.id AND (p.name LIKE ?1 OR p.code LIKE ?1 OR p.microchip LIKE ?1) AND p.active = 1))
        ORDER BY c.updated_at DESC LIMIT ?2`,
       q,
       a.limit ?? 50
@@ -113,6 +116,10 @@ export const clinicApi = {
         line_id: a.line_id?.trim(),
         address: a.address,
         tax_id: a.tax_id,
+        province: a.province,
+        postcode: a.postcode,
+        member_since: a.member_since,
+        member_expire: a.member_expire,
         note: a.note,
         pdpa_consent_at: a.pdpa_consent ? (a.pdpa_consent_at || now()) : null
       }
@@ -151,7 +158,113 @@ export const clinicApi = {
       'SELECT * FROM invoices WHERE pet_id = ? ORDER BY issued_at DESC LIMIT 50',
       a.id
     )
-    return { ...p, visits, vaccinations, invoices }
+    const attachments = all('SELECT * FROM attachments WHERE pet_id = ? ORDER BY created_at DESC', a.id)
+    const appointments = all(
+      `SELECT * FROM appointments WHERE pet_id = ? AND status = 'pending' ORDER BY appt_date, appt_time`,
+      a.id
+    )
+    const admission = one(`SELECT * FROM admissions WHERE pet_id = ? AND status = 'admitted'`, a.id)
+    return { ...p, visits, vaccinations, invoices, attachments, appointments, admission }
+  },
+
+  /* ---------- attachments (X-ray, lab results, photos) ---------- */
+  'attachments.add': async (a: { pet_id: string; visit_id?: string; kind?: string }) => {
+    const u = requireUser()
+    const win = BrowserWindow.getFocusedWindow()
+    const pick = await dialog.showOpenDialog(win!, {
+      title: 'เลือกไฟล์แนบ (รูป X-ray, ผลแล็บ, PDF)',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'รูปภาพ / PDF', extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'pdf'] }]
+    })
+    if (pick.canceled) return 0
+    const dir = join(app.getPath('userData'), 'attachments')
+    mkdirSync(dir, { recursive: true })
+    for (const file of pick.filePaths) {
+      const id = uid()
+      const storedAs = `${id}${extname(file).toLowerCase()}`
+      copyFileSync(file, join(dir, storedAs))
+      insert('attachments', { id, pet_id: a.pet_id, visit_id: a.visit_id, kind: a.kind, file_name: basename(file), stored_as: storedAs, created_by: u.id })
+      audit(u.id, 'attachment.add', 'attachments', id, { file: basename(file) })
+    }
+    return pick.filePaths.length
+  },
+
+  'attachments.thumb': (a: { id: string }) => {
+    const f = one<any>('SELECT * FROM attachments WHERE id = ?', a.id)
+    if (!f || f.stored_as.endsWith('.pdf')) return null
+    const mime = f.stored_as.endsWith('.png') ? 'image/png' : f.stored_as.endsWith('.gif') ? 'image/gif' : 'image/jpeg'
+    return `data:${mime};base64,${readFileSync(join(app.getPath('userData'), 'attachments', f.stored_as)).toString('base64')}`
+  },
+
+  'attachments.open': (a: { id: string }) => {
+    const f = one<any>('SELECT * FROM attachments WHERE id = ?', a.id)
+    if (f) shell.openPath(join(app.getPath('userData'), 'attachments', f.stored_as))
+    return true
+  },
+
+  /* ---------- appointments ---------- */
+  'appointments.list': (a: { from?: string; to?: string; status?: string }) =>
+    all(
+      `SELECT ap.*, p.name AS pet_name, p.species, p.code AS pet_code, c.name AS owner_name, c.phone, c.line_id,
+              u.display_name AS vet_name
+       FROM appointments ap JOIN pets p ON p.id = ap.pet_id JOIN customers c ON c.id = ap.customer_id
+       LEFT JOIN users u ON u.id = ap.vet_id
+       WHERE ap.appt_date BETWEEN ?1 AND ?2 AND (?3 = '' OR ap.status = ?3)
+       ORDER BY ap.appt_date, COALESCE(ap.appt_time, '99')`,
+      a.from || '0000-01-01',
+      a.to || '9999-12-31',
+      a.status ?? ''
+    ),
+
+  'appointments.get': (a: { id: string }) =>
+    one(
+      `SELECT ap.*, p.name AS pet_name, p.species, p.breed, p.sex, p.code AS pet_code, c.name AS owner_name, c.phone,
+              u.display_name AS vet_name
+       FROM appointments ap JOIN pets p ON p.id = ap.pet_id JOIN customers c ON c.id = ap.customer_id
+       LEFT JOIN users u ON u.id = ap.vet_id WHERE ap.id = ?`,
+      a.id
+    ),
+
+  'appointments.save': (a: Record<string, any>) => {
+    const u = requireUser()
+    const pet = one<any>('SELECT * FROM pets WHERE id = ?', a.pet_id)
+    if (!pet) throw new Error('กรุณาเลือกสัตว์เลี้ยง')
+    if (!a.appt_date) throw new Error('กรุณาเลือกวันนัด')
+    if (!a.topic?.trim()) throw new Error('กรุณาระบุหัวข้อนัด')
+    const row = {
+      pet_id: pet.id,
+      customer_id: pet.customer_id,
+      appt_date: a.appt_date,
+      appt_time: a.appt_time,
+      topic: a.topic.trim(),
+      detail: a.detail,
+      vet_id: a.vet_id || null,
+      visit_id: a.visit_id
+    }
+    if (a.id) {
+      update('appointments', a.id, row)
+      audit(u.id, 'appointment.update', 'appointments', a.id)
+      return a.id
+    }
+    const id = uid()
+    insert('appointments', { id, ...row, created_by: u.id })
+    audit(u.id, 'appointment.create', 'appointments', id, { date: a.appt_date, topic: a.topic })
+    return id
+  },
+
+  'appointments.setStatus': (a: { id: string; status: string }) => {
+    const u = requireUser()
+    if (!['pending', 'done', 'cancelled', 'no_show'].includes(a.status)) throw new Error('สถานะไม่ถูกต้อง')
+    update('appointments', a.id, { status: a.status })
+    audit(u.id, 'appointment.status', 'appointments', a.id, { status: a.status })
+    return true
+  },
+
+  'appointments.markCalled': (a: { id: string }) => {
+    const u = requireUser()
+    update('appointments', a.id, { called_at: now() })
+    audit(u.id, 'appointment.called', 'appointments', a.id)
+    return true
   },
 
   'pets.save': (a: Record<string, any>) => {
@@ -159,8 +272,11 @@ export const clinicApi = {
     if (!a.name?.trim()) throw new Error('กรุณากรอกชื่อสัตว์เลี้ยง')
     if (!a.species?.trim()) throw new Error('กรุณาระบุชนิดสัตว์')
     return tx(() => {
+      const code = a.code?.trim()
+      if (code && one('SELECT 1 FROM pets WHERE code = ? AND id <> ?', code, a.id ?? '')) throw new Error(`รหัสสัตว์ ${code} ถูกใช้แล้ว`)
       const row = {
         customer_id: a.customer_id,
+        code: code || undefined,
         name: a.name.trim(),
         species: a.species.trim(),
         breed: a.breed,
@@ -181,7 +297,7 @@ export const clinicApi = {
         return a.id
       }
       const id = uid()
-      insert('pets', { id, ...row })
+      insert('pets', { id, ...row, code: row.code ?? nextPetCode() })
       audit(u.id, 'pet.create', 'pets', id)
       return id
     })
@@ -203,7 +319,14 @@ export const clinicApi = {
         subjective: a.subjective,
         objective: a.objective,
         assessment: a.assessment,
-        plan: a.plan
+        plan: a.plan,
+        history: a.history,
+        blood_result: a.blood_result,
+        xray: a.xray,
+        lab_other: a.lab_other,
+        diff_diag: a.diff_diag,
+        treatment: a.treatment,
+        prescription: a.prescription
       }
       let id = a.id as string | undefined
       if (id) {

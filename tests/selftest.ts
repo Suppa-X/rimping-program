@@ -8,8 +8,9 @@ import { authApi } from '../src/main/auth'
 import { clinicApi } from '../src/main/api/clinic'
 import { salesApi } from '../src/main/api/sales'
 import { reportsApi } from '../src/main/api/reports'
+import { admissionsApi } from '../src/main/api/admissions'
 
-const api: Record<string, (a: any) => any> = { ...authApi, ...clinicApi, ...salesApi, ...reportsApi }
+const api: Record<string, (a: any) => any> = { ...authApi, ...clinicApi, ...salesApi, ...reportsApi, ...admissionsApi }
 let failed = 0
 function check(name: string, cond: boolean, detail?: unknown): void {
   if (cond) console.log('  ✔', name)
@@ -71,7 +72,7 @@ app.whenReady().then(async () => {
     ]
   })
   check('bill total 1000 paid', b1.total === 1000 && b1.status === 'paid', b1)
-  check('receipt number format', /^RC\d{4}-0001$/.test(b1.invoice_no), b1.invoice_no)
+  check('bill number like old program (yymmdd001)', /^\d{6}001$/.test(b1.invoice_no), b1.invoice_no)
   check('stock reduced to 18', one<any>('SELECT stock_qty FROM products WHERE id=?', foodId).stock_qty === 18)
   const vac = one<any>('SELECT * FROM vaccinations WHERE pet_id=?', pid)
   check('vaccine auto-recorded with next due date', !!vac?.next_due_date && vac.name === 'พิษสุนัขบ้า', vac)
@@ -110,6 +111,25 @@ app.whenReady().then(async () => {
   api['pos.checkout']({ customer_id: cid, pet_id: pid, visit_id: qv, queue_id: q.id, items: [{ product_id: exam.id, qty: 1, unit_price: 200, vet_id: owner.id }], bill_discount: 0, payments: [{ method: 'transfer', amount: 200 }] })
   check('checkout closes queue', one<any>('SELECT status FROM queue WHERE id=?', q.id).status === 'done')
 
+  console.log('pet code / appointment / admit')
+  check('pet got code like 69/1', /^\d{2}\/\d+$/.test(one<any>('SELECT code FROM pets WHERE id=?', pid).code))
+  check('search by pet code', api['customers.search']({ q: one<any>('SELECT code FROM pets WHERE id=?', pid).code }).length === 1)
+  const ap = api['appointments.save']({ pet_id: pid, appt_date: '2099-01-01', topic: 'นัดวัคซีน' })
+  check('appointment listed', api['appointments.list']({ status: 'pending' }).some((x: any) => x.id === ap))
+  const adId = api['admissions.admit']({ pet_id: pid, reason: 'ให้น้ำเกลือ' })
+  throws('cannot admit twice', () => api['admissions.admit']({ pet_id: pid }), /Admit อยู่แล้ว/)
+  const stockBefore = one<any>('SELECT stock_qty FROM products WHERE id=?', foodId).stock_qty
+  api['admissions.addCharge']({ admission_id: adId, product_id: foodId, qty: 2, unit_price: 250 })
+  api['admissions.addCharge']({ admission_id: adId, product_id: foodId, qty: 1, unit_price: 250, charge_date: '2099-01-02' })
+  const wrong = api['admissions.addCharge']({ admission_id: adId, product_id: exam.id, qty: 1, unit_price: 200, vet_id: owner.id })
+  api['admissions.voidCharge']({ id: wrong, reason: 'ลงผิด' })
+  check('admit charge takes stock now', one<any>('SELECT stock_qty FROM products WHERE id=?', foodId).stock_qty === stockBefore - 3)
+  check('admit running total 750', api['admissions.get']({ id: adId }).total === 750)
+  const dis = api['admissions.checkout']({ id: adId, bill_discount: 0, payments: [{ method: 'card', amount: 750 }] })
+  check('discharge bill groups charges into one line', one<any>('SELECT COUNT(*) n FROM invoice_items WHERE invoice_id=?', dis.id).n === 1 && dis.total === 750)
+  check('discharge does not take stock again', one<any>('SELECT stock_qty FROM products WHERE id=?', foodId).stock_qty === stockBefore - 3)
+  check('admission discharged', api['admissions.get']({ id: adId }).status === 'discharged')
+
   console.log('VAT')
   api['auth.login']({ username: 'owner', pin: '1111' })
   setSetting('vat_enabled', '1')
@@ -129,7 +149,7 @@ app.whenReady().then(async () => {
   check('shift diff -25', closed.diff === -25, closed)
   const today = one<any>("SELECT date('now','localtime') AS d").d
   const r = api['reports.sales']({ from: today, to: today })
-  check('report total excludes void (1000+500+225+200)', r.total === 1925, r.total)
+  check('report total excludes void (1000+500+225+200+750)', r.total === 2675, r.total)
   check('gross profit = sales - cost', Math.abs(r.gross_profit - (r.net_sales - r.cost)) < 0.01)
   check('vet report has owner', r.by_vet.some((v: any) => v.vet_id === owner.id))
   check('sync outbox captured changes', one<any>('SELECT COUNT(*) AS n FROM sync_outbox').n > 0)

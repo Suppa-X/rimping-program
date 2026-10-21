@@ -1,10 +1,10 @@
 import generatePayload from 'promptpay-qr'
 import QRCode from 'qrcode'
-import { all, one, insert, update, uid, audit, tx, now, r2, nextDocNo, getSetting } from '../db'
+import { all, one, insert, update, uid, audit, tx, now, r2, getSetting, nextCounter, beYear } from '../db'
 import { requireUser, requirePerm, approve, can, SessionUser } from '../auth'
 import { depositBalance, recordVaccination } from './clinic'
 
-type Method = 'cash' | 'transfer' | 'promptpay' | 'deposit'
+type Method = 'cash' | 'transfer' | 'promptpay' | 'card' | 'deposit'
 interface PayIn {
   method: Method
   amount: number
@@ -14,7 +14,7 @@ interface Approval {
   pin: string
 }
 
-const METHODS: Method[] = ['cash', 'transfer', 'promptpay', 'deposit']
+const METHODS: Method[] = ['cash', 'transfer', 'promptpay', 'card', 'deposit']
 
 /* ---------------- shifts ---------------- */
 
@@ -115,16 +115,16 @@ function statusFor(total: number, paid: number): 'paid' | 'partial' | 'unpaid' {
   return paid > 0 ? 'partial' : 'unpaid'
 }
 
-/** Receipt numbers run monthly in Buddhist-era year: RC6910-0001. */
-function receiptPrefix(): string {
+/** Bill numbers follow the old program: BE yymmdd + running number of the day, e.g. 691015001. */
+function nextBillNo(): string {
   const d = new Date()
-  const be = String(d.getFullYear() + 543).slice(2)
-  return `RC${be}${String(d.getMonth() + 1).padStart(2, '0')}`
+  const key = `${beYear(d)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+  return `${key}${String(nextCounter(`BILL${key}`)).padStart(3, '0')}`
 }
 
 /* ---------------- stock ---------------- */
 
-function moveStock(
+export function moveStock(
   productId: string,
   type: string,
   qty: number,
@@ -147,6 +147,8 @@ interface CartItem {
   unit_price: number
   discount?: number
   vet_id?: string | null
+  instruction?: string
+  unit_cost?: number
 }
 
 export function computeBill(items: CartItem[], billDiscount: number): any {
@@ -172,7 +174,9 @@ export function computeBill(items: CartItem[], billDiscount: number): any {
       gross,
       discount,
       line_total: r2(gross - discount),
-      vet_id: it.vet_id || null
+      vet_id: it.vet_id || null,
+      instruction: it.instruction?.trim() || null,
+      unit_cost: it.unit_cost
     }
   })
   if (!lines.length) throw new Error('ยังไม่มีรายการในบิล')
@@ -226,6 +230,117 @@ export function computeBill(items: CartItem[], billDiscount: number): any {
   }
 }
 
+interface CheckoutIn {
+  customer_id?: string
+  pet_id?: string
+  visit_id?: string
+  queue_id?: string
+  admission_id?: string
+  items: CartItem[]
+  bill_discount: number
+  payments: PayIn[]
+  note?: string
+  approval?: Approval
+}
+
+/** Create a bill with its items, stock moves, vaccine records and payments (caller wraps in tx). */
+export function createInvoice(u: SessionUser, a: CheckoutIn): { id: string; invoice_no: string; status: string; total: number; paid: number } {
+  const shift = requireOpenShift()
+  const b = computeBill(a.items, a.bill_discount)
+  const customerId = a.customer_id || null
+
+  let approvedBy: string | null = null
+  if (u.role !== 'owner' && b.discount_pct > u.max_discount_pct + 0.001) {
+    if (!a.approval) throw new Error(`ส่วนลด ${b.discount_pct}% เกินสิทธิ์ของคุณ (${u.max_discount_pct}%) — ต้องให้ผู้มีสิทธิ์อนุมัติ`)
+    approvedBy = approve(a.approval.username, a.approval.pin, { discountPct: b.discount_pct }).id
+  }
+
+  for (const l of b.lines) {
+    if (l.product.needs_vet && !l.vet_id) throw new Error(`กรุณาเลือกสัตวแพทย์ผู้ทำ "${l.name}"`)
+  }
+
+  const payments = validatePayments(a.payments, customerId)
+  const paid = r2(payments.reduce((t, p) => t + p.amount, 0))
+  if (paid > b.total + 0.001) throw new Error('ยอดชำระเกินยอดบิล (เงินทอนคำนวณที่หน้าจอ ไม่ต้องบันทึก)')
+  const status = statusFor(b.total, paid)
+  if (status !== 'paid' && !customerId) throw new Error('บิลค้างชำระต้องระบุลูกค้า')
+
+  const id = uid()
+  const invoiceNo = nextBillNo()
+  insert('invoices', {
+    id,
+    invoice_no: invoiceNo,
+    doc_type: b.vat_enabled ? 'tax_invoice_abb' : 'receipt',
+    customer_id: customerId,
+    pet_id: a.pet_id,
+    visit_id: a.visit_id,
+    admission_id: a.admission_id,
+    status,
+    subtotal: b.subtotal,
+    line_discount: b.line_discount,
+    bill_discount: b.bill_discount,
+    vat_enabled: b.vat_enabled,
+    vat_inclusive: b.vat_inclusive,
+    vat_rate: b.vat_rate,
+    vatable_amount: b.vatable_amount,
+    exempt_amount: b.exempt_amount,
+    vat_amount: b.vat_amount,
+    total: b.total,
+    paid_amount: paid,
+    cost_total: b.cost_total,
+    note: a.note,
+    discount_approved_by: approvedBy,
+    shift_id: shift.id,
+    created_by: u.id,
+    issued_at: now()
+  })
+
+  for (const l of b.lines) {
+    insert('invoice_items', {
+      id: uid(),
+      invoice_id: id,
+      seq: l.seq,
+      product_id: l.product.id,
+      name: l.name,
+      category: l.product.category,
+      unit: l.product.unit,
+      qty: l.qty,
+      unit_price: l.unit_price,
+      discount: l.discount,
+      line_total: l.line_total,
+      unit_cost: l.unit_cost ?? (l.product.avg_cost || 0),
+      vat_type: l.product.vat_type,
+      vet_id: l.vet_id,
+      instruction: l.instruction,
+      from_admission: !!a.admission_id
+    })
+    // Admit charges already took stock when they were recorded.
+    if (l.product.track_stock && !a.admission_id) moveStock(l.product.id, 'sale', -l.qty, l.product.avg_cost || 0, u.id, id)
+    if (l.product.category === 'vaccine' && a.pet_id) {
+      const vt = one<{ id: string }>('SELECT id FROM vaccine_types WHERE product_id = ? AND active = 1', l.product.id)
+      recordVaccination({
+        pet_id: a.pet_id,
+        vaccine_type_id: vt?.id,
+        name: vt ? undefined : l.name,
+        vet_id: l.vet_id ?? undefined,
+        invoice_id: id
+      })
+    }
+  }
+
+  addPayments(u, shift.id, id, customerId, payments)
+  if (a.visit_id) update('visits', a.visit_id, { invoice_id: id })
+  if (a.queue_id) update('queue', a.queue_id, { invoice_id: id, status: 'done' })
+  if (a.admission_id) update('admissions', a.admission_id, { invoice_id: id, status: 'discharged', discharged_at: now() })
+  audit(u.id, 'invoice.create', 'invoices', id, {
+    invoice_no: invoiceNo,
+    total: b.total,
+    discount: b.line_discount + b.bill_discount,
+    approved_by: approvedBy
+  })
+  return { id, invoice_no: invoiceNo, status, total: b.total, paid }
+}
+
 /* ---------------- API ---------------- */
 
 export const salesApi = {
@@ -248,7 +363,7 @@ export const salesApi = {
     const u = requirePerm('stock.edit')
     if (!a.name?.trim()) throw new Error('กรุณากรอกชื่อสินค้า/บริการ')
     return tx(() => {
-      const service = ['service', 'procedure'].includes(a.category)
+      const service = ['service', 'procedure', 'grooming', 'boarding'].includes(a.category)
       const row = {
         sku: a.sku?.trim(),
         name: a.name.trim(),
@@ -259,6 +374,10 @@ export const salesApi = {
         track_stock: service ? false : !!a.track_stock,
         vat_type: a.vat_type === 'exempt' ? 'exempt' : 'vat',
         needs_vet: !!a.needs_vet,
+        drug_group: a.drug_group,
+        label_th: a.label_th,
+        label_en: a.label_en,
+        controlled: !!a.controlled,
         note: a.note,
         active: a.active ?? true
       }
@@ -373,110 +492,11 @@ export const salesApi = {
     }
   },
 
-  'pos.checkout': (a: {
-    customer_id?: string
-    pet_id?: string
-    visit_id?: string
-    queue_id?: string
-    items: CartItem[]
-    bill_discount: number
-    payments: PayIn[]
-    note?: string
-    approval?: Approval
-  }) => {
+  'pos.checkout': (a: CheckoutIn) => {
     const u = requireUser()
-    return tx(() => {
-      const shift = requireOpenShift()
-      const b = computeBill(a.items, a.bill_discount)
-      const customerId = a.customer_id || null
-
-      let approvedBy: string | null = null
-      if (u.role !== 'owner' && b.discount_pct > u.max_discount_pct + 0.001) {
-        if (!a.approval) throw new Error(`ส่วนลด ${b.discount_pct}% เกินสิทธิ์ของคุณ (${u.max_discount_pct}%) — ต้องให้ผู้มีสิทธิ์อนุมัติ`)
-        approvedBy = approve(a.approval.username, a.approval.pin, { discountPct: b.discount_pct }).id
-      }
-
-      for (const l of b.lines) {
-        if (l.product.needs_vet && !l.vet_id) throw new Error(`กรุณาเลือกสัตวแพทย์ผู้ทำ "${l.name}"`)
-      }
-
-      const payments = validatePayments(a.payments, customerId)
-      const paid = r2(payments.reduce((t, p) => t + p.amount, 0))
-      if (paid > b.total + 0.001) throw new Error('ยอดชำระเกินยอดบิล (เงินทอนคำนวณที่หน้าจอ ไม่ต้องบันทึก)')
-      const status = statusFor(b.total, paid)
-      if (status !== 'paid' && !customerId) throw new Error('บิลค้างชำระต้องระบุลูกค้า')
-
-      const id = uid()
-      const invoiceNo = nextDocNo(receiptPrefix())
-      insert('invoices', {
-        id,
-        invoice_no: invoiceNo,
-        doc_type: b.vat_enabled ? 'tax_invoice_abb' : 'receipt',
-        customer_id: customerId,
-        pet_id: a.pet_id,
-        visit_id: a.visit_id,
-        status,
-        subtotal: b.subtotal,
-        line_discount: b.line_discount,
-        bill_discount: b.bill_discount,
-        vat_enabled: b.vat_enabled,
-        vat_inclusive: b.vat_inclusive,
-        vat_rate: b.vat_rate,
-        vatable_amount: b.vatable_amount,
-        exempt_amount: b.exempt_amount,
-        vat_amount: b.vat_amount,
-        total: b.total,
-        paid_amount: paid,
-        cost_total: b.cost_total,
-        note: a.note,
-        discount_approved_by: approvedBy,
-        shift_id: shift.id,
-        created_by: u.id,
-        issued_at: now()
-      })
-
-      for (const l of b.lines) {
-        insert('invoice_items', {
-          id: uid(),
-          invoice_id: id,
-          seq: l.seq,
-          product_id: l.product.id,
-          name: l.name,
-          category: l.product.category,
-          unit: l.product.unit,
-          qty: l.qty,
-          unit_price: l.unit_price,
-          discount: l.discount,
-          line_total: l.line_total,
-          unit_cost: l.product.avg_cost || 0,
-          vat_type: l.product.vat_type,
-          vet_id: l.vet_id
-        })
-        if (l.product.track_stock) moveStock(l.product.id, 'sale', -l.qty, l.product.avg_cost || 0, u.id, id)
-        if (l.product.category === 'vaccine' && a.pet_id) {
-          const vt = one<{ id: string }>('SELECT id FROM vaccine_types WHERE product_id = ? AND active = 1', l.product.id)
-          recordVaccination({
-            pet_id: a.pet_id,
-            vaccine_type_id: vt?.id,
-            name: vt ? undefined : l.name,
-            vet_id: l.vet_id ?? undefined,
-            invoice_id: id
-          })
-        }
-      }
-
-      addPayments(u, shift.id, id, customerId, payments)
-      if (a.visit_id) update('visits', a.visit_id, { invoice_id: id })
-      if (a.queue_id) update('queue', a.queue_id, { invoice_id: id, status: 'done' })
-      audit(u.id, 'invoice.create', 'invoices', id, {
-        invoice_no: invoiceNo,
-        total: b.total,
-        discount: b.line_discount + b.bill_discount,
-        approved_by: approvedBy
-      })
-      return { id, invoice_no: invoiceNo, status, total: b.total, paid }
-    })
+    return tx(() => createInvoice(u, a))
   },
+
 
   /* ----- invoices ----- */
   'invoices.list': (a: { from?: string; to?: string; status?: string; q?: string }) =>
@@ -572,11 +592,12 @@ export const salesApi = {
       }
       for (const it of all<any>(
         `SELECT it.* FROM invoice_items it JOIN products p ON p.id = it.product_id
-         WHERE it.invoice_id = ? AND p.track_stock = 1`,
+         WHERE it.invoice_id = ? AND p.track_stock = 1 AND it.from_admission = 0`,
         inv.id
       )) {
         moveStock(it.product_id, 'void_return', it.qty, it.unit_cost, u.id, inv.id, `ยกเลิกบิล ${inv.invoice_no}`)
       }
+      if (inv.admission_id) update('admissions', inv.admission_id, { status: 'admitted', invoice_id: null, discharged_at: null })
       update('invoices', inv.id, {
         status: 'void',
         void_reason: a.reason.trim(),

@@ -7,13 +7,21 @@ declare global {
   }
 }
 
+/** True when running as the browser demo (no Electron preload). */
+export const isWeb = typeof window !== "undefined" && !window.rimping
+
 export async function api<T = any>(method: string, args?: unknown): Promise<T> {
-  const res = await window.rimping.call(method, args)
+  const res = isWeb
+    ? await fetch("/api", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ method, args }) }).then((r) => r.json())
+    : await window.rimping.call(method, args)
   if (!res.ok) throw new Error(res.error)
   return res.data as T
 }
 
-export const openPrint = (route: string): Promise<void> => window.rimping.openPrint(route)
+export const openPrint = async (route: string): Promise<void> => {
+  if (isWeb) window.open(`#${route}`, '_blank', 'width=760,height=900')
+  else await window.rimping.openPrint(route)
+}
 
 /* ---------- formatting ---------- */
 
@@ -60,6 +68,8 @@ export const CATEGORY_LABEL: Record<string, string> = {
   medicine: 'ยา',
   food: 'อาหาร',
   supply: 'เวชภัณฑ์/อุปกรณ์',
+  grooming: 'อาบน้ำตัดขน',
+  boarding: 'ฝากเลี้ยง/ค่าห้อง',
   other: 'อื่น ๆ'
 }
 
@@ -67,6 +77,7 @@ export const METHOD_LABEL: Record<string, string> = {
   cash: 'เงินสด',
   transfer: 'โอนเงิน',
   promptpay: 'QR พร้อมเพย์',
+  card: 'บัตรเครดิต',
   deposit: 'หักเงินมัดจำ'
 }
 
@@ -87,3 +98,30 @@ export const ROLE_LABEL: Record<string, string> = {
 }
 
 export const SPECIES = ['สุนัข', 'แมว', 'กระต่าย', 'นก', 'หนูแฮมสเตอร์', 'กระรอก', 'เต่า', 'อื่น ๆ']
+
+export function addDays(date: string, days: number): string {
+  const d = new Date(date + "T00:00:00")
+  d.setDate(d.getDate() + days)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+export function addMonths(date: string, months: number): string {
+  const d = new Date(date + "T00:00:00")
+  d.setMonth(d.getMonth() + months)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
+const TH_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"]
+const TH_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
+const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+/** "วันพุธที่ 15 ตุลาคม 2569" or "Wednesday, 15 October 2026". */
+export function longDate(date: string, lang: "th" | "en" = "th"): string {
+  const d = new Date(date + "T00:00:00")
+  return lang === "th"
+    ? `วัน${TH_DAYS[d.getDay()]}ที่ ${d.getDate()} ${TH_MONTHS_FULL[d.getMonth()]} ${d.getFullYear() + 543}`
+    : `${EN_DAYS[d.getDay()]}, ${d.getDate()} ${EN_MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+export const APPT_TOPICS = ["นัดวัคซีน", "ตรวจติดตามอาการ", "ฉีดยาต่อเนื่อง", "ตัดไหม/ทำแผล", "ผ่าตัด", "ทำหมัน", "ขูดหินปูน", "ถ่ายพยาธิ/หยดเห็บหมัด", "ตรวจเลือด", "อาบน้ำตัดขน", "อื่น ๆ"]

@@ -64,7 +64,7 @@ export default function Products() {
                   <tr key={p.id}>
                     <td className="muted">{p.sku ?? '-'}</td>
                     <td className="bold">
-                      {p.name} {p.needs_vet ? <span className="badge" title="ต้องระบุสัตวแพทย์ (สำหรับ DF)">แพทย์</span> : null}
+                      {p.name} {p.controlled ? <span className="badge bad">ยาควบคุม</span> : null} {p.needs_vet ? <span className="badge" title="ต้องระบุสัตวแพทย์ (สำหรับ DF)">แพทย์</span> : null}
                     </td>
                     <td className="small">{CATEGORY_LABEL[p.category]}</td>
                     <td className="num">{money(p.price)}</td>
@@ -104,7 +104,8 @@ function ProductForm(props: { initial: any; onClose: () => void; onSaved: () => 
   const [f, setF] = useState<any>({ ...props.initial })
   const act = useAction()
   const set = (k: string, v: any): void => setF((x: any) => ({ ...x, [k]: v }))
-  const service = ['service', 'procedure'].includes(f.category)
+  const service = ['service', 'procedure', 'grooming', 'boarding'].includes(f.category)
+  const drug = ['medicine', 'vaccine'].includes(f.category)
   const save = async (): Promise<void> => {
     if (await act(() => api('products.save', f), 'บันทึกแล้ว')) props.onSaved()
   }
@@ -128,7 +129,7 @@ function ProductForm(props: { initial: any; onClose: () => void; onSaved: () => 
             value={f.category}
             onChange={(e) => {
               const c = e.target.value
-              const svc = ['service', 'procedure'].includes(c)
+              const svc = ['service', 'procedure', 'grooming', 'boarding'].includes(c)
               setF((x: any) => ({ ...x, category: c, track_stock: !svc, needs_vet: svc || c === 'vaccine' }))
             }}
           >
@@ -156,6 +157,23 @@ function ProductForm(props: { initial: any; onClose: () => void; onSaved: () => 
           </Field>
         )}
       </div>
+      {drug && (
+        <div className="pick stack">
+          <b>ข้อมูลยา (ใช้พิมพ์ฉลากยา)</b>
+          <Field label="กลุ่มยา">
+            <input value={f.drug_group ?? ''} onChange={(e) => set('drug_group', e.target.value)} placeholder="ยาปฏิชีวนะ (Antibiotic)" />
+          </Field>
+          <div className="grid g2">
+            <Field label="วิธีใช้ (ภาษาไทย)">
+              <input value={f.label_th ?? ''} onChange={(e) => set('label_th', e.target.value)} placeholder="กินครั้งละ 1 เม็ด วันละ 2 ครั้ง หลังอาหาร" />
+            </Field>
+            <Field label="วิธีใช้ (English)">
+              <input value={f.label_en ?? ''} onChange={(e) => set('label_en', e.target.value)} placeholder="1 tablet twice daily after meals" />
+            </Field>
+          </div>
+          <label className="check"><input type="checkbox" checked={!!f.controlled} onChange={(e) => set('controlled', e.target.checked)} /> ยาควบคุม (ต้องลงบัญชี ข.ย.) — จะขึ้นในรายงานยาควบคุม</label>
+        </div>
+      )}
       <div className="row">
         {!service && (
           <label className="check">

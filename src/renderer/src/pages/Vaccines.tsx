@@ -11,7 +11,7 @@ const RANGES = [
   { days: 30, label: 'ภายใน 30 วัน' }
 ]
 
-export default function Vaccines() {
+export default function Vaccines({ embedded }: { embedded?: boolean }) {
   const nav = useNavigate()
   const act = useAction()
   const toast = useToast()
@@ -32,12 +32,14 @@ export default function Vaccines() {
 
   return (
     <>
-      <div className="page-head">
-        <div className="grow">
-          <h1>นัดวัคซีน / ยาป้องกัน</h1>
-          <div className="lead">สัตว์ที่ครบกำหนดหรือเลยกำหนด — โทรหรือส่ง LINE แจ้งเจ้าของ</div>
+      {!embedded && (
+        <div className="page-head">
+          <div className="grow">
+            <h1>นัดวัคซีน / ยาป้องกัน</h1>
+            <div className="lead">สัตว์ที่ครบกำหนดหรือเลยกำหนด — โทรหรือส่ง LINE แจ้งเจ้าของ</div>
+          </div>
         </div>
-      </div>
+        )}
       <div className="subtabs">
         {RANGES.map((r) => (
           <button key={r.days} className={days === r.days ? 'active' : ''} onClick={() => setDays(r.days)}>{r.label}</button>

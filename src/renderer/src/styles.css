@@ -287,7 +287,7 @@ tr.void td { color: #9aa8b5; text-decoration: line-through; }
 .timeline::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: var(--line-2); }
 .tl-item { position: relative; margin-bottom: 16px; }
 .tl-item::before { content: ''; position: absolute; left: -23px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--blue); border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line-2); }
-.soap { display: grid; grid-template-columns: 30px 1fr; gap: 6px 10px; font-size: 15px; margin-top: 8px; }
+.soap { display: grid; grid-template-columns: 44px 1fr; gap: 6px 10px; font-size: 15px; margin-top: 8px; }
 .soap b { color: #fff; background: var(--blue); border-radius: 6px; text-align: center; font-size: 13px; padding: 1px 0; height: 22px; }
 .vitals { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -324,3 +324,8 @@ tr.void td { color: #9aa8b5; text-decoration: line-through; }
 .pos > .card, .split > .card, .split > div > .card:first-child { margin-top: 0; }
 .stat:not(:has(.ico)) { display: block; }
 .action { justify-content: flex-start; }
+
+/* exam screen */
+.exam-field { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--muted); }
+.exam-field b { color: var(--navy); font-family: 'Prompt'; font-weight: 500; }
+.exam-field textarea { min-height: 58px; }

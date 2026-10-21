@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, Stethoscope, ShoppingBag, AlertTriangle, Syringe, Receipt, ClipboardList, Plus, Weight, Thermometer, HeartPulse, Wind, ListPlus, Cpu } from 'lucide-react'
+import { ArrowLeft, Pencil, Stethoscope, ShoppingBag, AlertTriangle, Syringe, Receipt, ClipboardList, Plus, Weight, Thermometer, HeartPulse, Wind, ListPlus, Cpu, CalendarPlus, BedDouble, Paperclip, CalendarDays } from 'lucide-react'
 import { api, money, thDate, age, SEX_LABEL, todayStr } from '../api'
 import { useApi, useAction, useSession, StatusBadge, Empty, SpeciesIcon } from '../ui'
-import { PetForm, VisitForm, VaccinationForm } from './forms'
+import { PetForm, VisitForm, VaccinationForm, AppointmentForm } from './forms'
+import { AdmitModal } from './Admissions'
+import { AttachmentsPanel } from './Attachments'
 
 export default function PetDetail() {
   const { id } = useParams()
@@ -13,7 +15,9 @@ export default function PetDetail() {
   const act = useAction()
   const queueId = params.get('queue') ?? undefined
   const [p, reload] = useApi<any>('pets.get', { id }, [id])
-  const [tab, setTab] = useState<'visits' | 'vaccines' | 'bills'>('visits')
+  const [tab, setTab] = useState<'visits' | 'vaccines' | 'bills' | 'files'>('visits')
+  const [appt, setAppt] = useState(false)
+  const [admitting, setAdmitting] = useState(false)
   const [editing, setEditing] = useState(false)
   const [visit, setVisit] = useState<any | null>(params.get('exam') === '1' ? {} : null)
   const [addingVacc, setAddingVacc] = useState(false)
@@ -35,6 +39,8 @@ export default function PetDetail() {
           <div className="info">
             <div className="row" style={{ gap: 10 }}>
               <h1>{p.name}</h1>
+              {p.code && <span className="badge grey">รหัส {p.code}</span>}
+              {p.admission && <span className="badge purple" style={{ cursor: 'pointer' }} onClick={() => nav(`/admissions/${p.admission.id}`)}><BedDouble size={13} /> กำลัง Admit</span>}
               {p.deceased ? <span className="badge grey">เสียชีวิต</span> : null}
               {queueId && <span className="badge purple">กำลังตรวจจากคิว</span>}
             </div>
@@ -52,6 +58,8 @@ export default function PetDetail() {
             <div className="row">
               {!queueId && <button className="secondary" onClick={enqueue}><ListPlus /> เข้าคิว</button>}
               <button className="secondary" onClick={() => goBill()}><ShoppingBag /> คิดเงิน</button>
+              <button className="secondary" onClick={() => setAppt(true)}><CalendarPlus /> นัด</button>
+              {!p.admission && <button className="secondary" onClick={() => setAdmitting(true)}><BedDouble /> Admit</button>}
               <button className="secondary" onClick={() => setEditing(true)}><Pencil /> แก้ไข</button>
             </div>
           </div>
@@ -59,6 +67,11 @@ export default function PetDetail() {
         {(p.allergy_note || p.warning_note) && (
           <div className="alert" style={{ marginTop: 14 }}>
             <AlertTriangle size={18} /> {p.allergy_note && <b>แพ้: {p.allergy_note}</b>} {p.warning_note && ` · ${p.warning_note}`}
+          </div>
+        )}
+        {p.appointments.length > 0 && (
+          <div className="alert info" style={{ marginTop: 10 }}>
+            <CalendarDays size={18} /> นัดถัดไป: {p.appointments.map((a: any) => `${a.topic} ${thDate(a.appt_date)}${a.appt_time ? ` ${a.appt_time}` : ''}`).join(' · ')}
           </div>
         )}
       </div>
@@ -69,6 +82,7 @@ export default function PetDetail() {
           <Syringe size={17} /> วัคซีน/ยาป้องกัน ({p.vaccinations.length}) {due.some((x: any) => x.next_due_date <= todayStr()) && <span className="count">!</span>}
         </button>
         <button className={tab === 'bills' ? 'active' : ''} onClick={() => setTab('bills')}><Receipt size={17} /> บิล ({p.invoices.length})</button>
+        <button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')}><Paperclip size={17} /> ไฟล์แนบ/X-ray ({p.attachments.length})</button>
       </div>
 
       {tab === 'visits' && (
@@ -97,10 +111,17 @@ export default function PetDetail() {
                     {v.resp_rate && <span className="badge"><Wind size={13} /> {v.resp_rate}/นาที</span>}
                   </div>
                   <div className="soap">
-                    {v.subjective && <><b>S</b><div><span className="muted">อาการ:</span> {v.subjective}</div></>}
-                    {v.objective && <><b>O</b><div><span className="muted">ตรวจพบ:</span> {v.objective}</div></>}
-                    {v.assessment && <><b>A</b><div><span className="muted">วินิจฉัย:</span> <b style={{ background: 'none', color: 'var(--navy)', fontSize: 15 }}>{v.assessment}</b></div></>}
-                    {v.plan && <><b>P</b><div><span className="muted">การรักษา:</span> {v.plan}</div></>}
+                    {v.subjective && <><b>CC</b><div><span className="muted">อาการ:</span> {v.subjective}</div></>}
+                    {v.history && <><b>Hx</b><div><span className="muted">ประวัติ:</span> {v.history}</div></>}
+                    {v.objective && <><b>PE</b><div><span className="muted">ตรวจพบ:</span> {v.objective}</div></>}
+                    {v.blood_result && <><b>Lab</b><div><span className="muted">ผลเลือด:</span> {v.blood_result}</div></>}
+                    {v.xray && <><b>Xr</b><div><span className="muted">X-ray:</span> {v.xray}</div></>}
+                    {v.lab_other && <><b>Lab</b><div><span className="muted">แล็บอื่น:</span> {v.lab_other}</div></>}
+                    {v.diff_diag && <><b>DDx</b><div><span className="muted">วินิจฉัยแยกโรค:</span> {v.diff_diag}</div></>}
+                    {v.assessment && <><b>Dx</b><div><span className="muted">วินิจฉัย:</span> <b style={{ background: 'none', color: 'var(--navy)', fontSize: 15 }}>{v.assessment}</b></div></>}
+                    {v.treatment && <><b>Tx</b><div><span className="muted">การรักษา:</span> {v.treatment}</div></>}
+                    {v.prescription && <><b>Rx</b><div><span className="muted">ยากลับบ้าน:</span> {v.prescription}</div></>}
+                    {v.plan && <><b>Plan</b><div><span className="muted">แผน:</span> {v.plan}</div></>}
                   </div>
                 </div>
               ))}
@@ -173,10 +194,14 @@ export default function PetDetail() {
         </div>
       )}
 
+      {tab === 'files' && <AttachmentsPanel petId={p.id} files={p.attachments} onChange={reload} />}
+      {appt && <AppointmentForm pet={{ ...p, owner_name: p.owner_name }} onClose={() => setAppt(false)} onSaved={() => { setAppt(false); reload() }} />}
+      {admitting && <AdmitModal pet={{ ...p, owner_name: p.owner_name }} onClose={() => setAdmitting(false)} onDone={(aid) => nav(`/admissions/${aid}`)} />}
       {editing && <PetForm customerId={p.customer_id} initial={p} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); reload() }} />}
       {visit && (
         <VisitForm
           petId={p.id}
+          pet={p}
           initial={visit.id ? visit : { weight_kg: p.weight_kg, queue_id: queueId }}
           onClose={() => setVisit(null)}
           onSaved={(vid, bill) => {
