@@ -1,0 +1,76 @@
+{
+  "name": "rimping-program",
+  "productName": "Rimping",
+  "version": "0.1.0",
+  "description": "โปรแกรมผู้ช่วยหน้าร้าน ร้าน Rimping สัตวแพทย์",
+  "main": "./out/main/index.js",
+  "author": "Rimping",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dist": "electron-vite build && electron-builder --win --x64",
+    "selftest": "rolldown tests/selftest.ts --platform node --format cjs -e electron -e qrcode -e promptpay-qr -e node:sqlite -o out/selftest.js && electron out/selftest.js",
+    "screens": "electron-vite build && rolldown tests/screens.ts --platform node --format cjs -e electron -e ./main/index.js -o out/screens.js && electron out/screens.js",
+    "demo": "electron-vite build && rolldown tests/demo.ts --platform node --format cjs -e electron -e ./main/index.js -o out/demo.js && electron out/demo.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "electron-updater": "^6.8.9",
+    "promptpay-qr": "^0.5.0",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@fontsource/prompt": "^5.3.0",
+    "@fontsource/sarabun": "^5.3.0",
+    "@types/node": "^26.6.5",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^6.0.0",
+    "lucide-react": "^1.59.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.4",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  },
+  "build": {
+    "appId": "th.rimping.clinic",
+    "productName": "Rimping",
+    "copyright": "Rimping Veterinary Clinic",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/main/**",
+      "out/preload/**",
+      "out/renderer/**",
+      "resources/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "ริมปิงสัตวแพทย์",
+      "artifactName": "Rimping-Setup-${version}.${ext}"
+    }
+  }
+}
