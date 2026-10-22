@@ -168,6 +168,17 @@ const EXAM_RIGHT: [string, string, string][] = [
   ['plan', 'Plan', 'แผน / คำแนะนำ']
 ]
 
+/** Common phrases a vet can tap instead of typing (a free alternative to AI note-writing). */
+const PHRASES: Record<string, string[]> = {
+  subjective: ['ไม่กินอาหาร', 'อาเจียน', 'ท้องเสีย', 'ซึม', 'ไอ/จาม', 'คันผิวหนัง', 'เกาหู', 'ขาเจ็บ เดินกะเผลก', 'ปัสสาวะผิดปกติ', 'มาฉีดวัคซีนตามนัด'],
+  history: ['วัคซีนครบ', 'วัคซีนไม่ครบ', 'ถ่ายพยาธิแล้ว', 'กินอาหารเม็ด', 'เลี้ยงในบ้าน', 'เลี้ยงปล่อย', 'เคยเป็นมาก่อน'],
+  objective: ['BCS 3/5', 'เยื่อเมือกชมพู', 'CRT < 2 วินาที', 'ขาดน้ำเล็กน้อย (~5%)', 'ท้องกดเจ็บ', 'ฟังปอดปกติ', 'หูอักเสบ', 'ผิวหนังแดง มีรังแค', 'ปกติทุกระบบ'],
+  assessment: ['Gastroenteritis', 'Otitis externa', 'Dermatitis', 'URTI', 'Healthy — vaccination', 'Wound'],
+  treatment: ['ฉีดยาลดอาเจียน', 'ให้น้ำเกลือใต้ผิวหนัง', 'ฉีดยาปฏิชีวนะ', 'ล้างหู', 'ทำแผล', 'ฉีดวัคซีน'],
+  prescription: ['ยาปฏิชีวนะ 7 วัน', 'ยาลดอักเสบ 5 วัน', 'ยาหยอดหู 7 วัน', 'อาหารเฉพาะโรค'],
+  plan: ['นัดดูอาการ 3 วัน', 'นัดดูอาการ 7 วัน', 'ถ้าอาการไม่ดีขึ้นให้กลับมาทันที', 'งดอาหาร 12 ชม.', 'ใส่ปลอกคอกันเลีย']
+}
+
 /** The exam screen, laid out like the old program's ห้องตรวจ (history on the left, diagnosis and treatment on the right). */
 export function VisitForm(props: { petId: string; pet?: any; initial?: any; onClose: () => void; onSaved: (id: string, bill: boolean) => void }) {
   const { me } = useSession()
@@ -193,6 +204,13 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
     <label key={k} className="exam-field">
       <span><b>{en}</b> {th}</span>
       <textarea value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
+      {PHRASES[k] && (
+        <span className="phrases">
+          {PHRASES[k].map((p) => (
+            <button key={p} type="button" onClick={(e) => { e.preventDefault(); set(k, f[k] ? `${f[k]}, ${p}` : p) }}>+ {p}</button>
+          ))}
+        </span>
+      )}
     </label>
   )
   return (
@@ -214,7 +232,7 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
           <input type="date" value={f.visit_date} onChange={(e) => set('visit_date', e.target.value)} />
         </Field>
         <Field label="สัตวแพทย์">
-          <select value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— เลือก —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>
@@ -338,7 +356,7 @@ export function AppointmentForm(props: { pet?: any; initial?: any; onClose: () =
           <input type="time" value={f.appt_time ?? ''} onChange={(e) => set('appt_time', e.target.value)} />
         </Field>
         <Field label="สัตวแพทย์">
-          <select value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>
@@ -409,7 +427,7 @@ export function VaccinationForm(props: { petId: string; onClose: () => void; onS
           <input value={f.lot_no ?? ''} onChange={(e) => set('lot_no', e.target.value)} />
         </Field>
         <Field label="สัตวแพทย์">
-          <select value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>

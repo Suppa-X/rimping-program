@@ -329,3 +329,38 @@ tr.void td { color: #9aa8b5; text-decoration: line-through; }
 .exam-field { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--muted); }
 .exam-field b { color: var(--navy); font-family: 'Prompt'; font-weight: 500; }
 .exam-field textarea { min-height: 58px; }
+
+/* ---------- responsive: laptop / tablet / phone ---------- */
+.tabbar a.tab { white-space: nowrap; min-width: 0; padding: 10px 14px 9px; }
+@media (max-width: 1200px) {
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split, .pos { grid-template-columns: minmax(0, 1fr) !important; }
+  .cart { position: static; }
+  .topbar .sub { display: none; }
+}
+@media (max-width: 900px) {
+  .g3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page { padding: 16px 14px 40px; }
+  .tabbar a.tab { font-size: 13.5px; padding: 8px 10px; }
+  .tabbar a.tab svg { width: 20px; height: 20px; }
+  .steps { flex-direction: column; }
+  .profile { flex-wrap: wrap; }
+  .pill { font-size: 12.5px; }
+}
+@media (max-width: 640px) {
+  .g2, .g3, .g4, .actions, .board { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 22px; }
+  .topbar { padding: 8px 12px; gap: 8px; }
+  .topbar .name { font-size: 16px; }
+  .userchip > div:nth-child(2) { display: none; }
+  .modal-back { padding: 0; }
+  .modal { border-radius: 0; min-height: 100vh; }
+  .pay-line { grid-template-columns: 1fr; }
+  table { font-size: 14px; }
+  .card { padding: 14px; }
+}
+.phrases { display: flex; flex-wrap: wrap; gap: 4px; }
+.phrases button { background: #f1f6fb; color: var(--navy); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; font-size: 12.5px; font-weight: 400; }
+.phrases button:hover { background: var(--blue-soft); filter: none; }

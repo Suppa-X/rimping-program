@@ -256,7 +256,7 @@ export default function Pos() {
                       <input style={{ marginTop: 8, padding: '7px 10px' }} placeholder="วิธีใช้ยา (พิมพ์บนฉลาก) เช่น กินครั้งละ 1 เม็ด เช้า-เย็น หลังอาหาร" value={l.instruction} onChange={(e) => patch(l.key, { instruction: e.target.value })} />
                     )}
                     {l.product.needs_vet ? (
-                      <select style={{ marginTop: 8, padding: '7px 10px', borderColor: l.vet_id ? undefined : 'var(--bad)' }} value={l.vet_id} onChange={(e) => patch(l.key, { vet_id: e.target.value })}>
+                      <select key={vets?.length ?? 0} style={{ marginTop: 8, padding: '7px 10px', borderColor: l.vet_id ? undefined : 'var(--bad)' }} value={l.vet_id} onChange={(e) => patch(l.key, { vet_id: e.target.value })}>
                         <option value="">— เลือกสัตวแพทย์ผู้ทำ —</option>
                         {vets?.map((v) => <option key={v.id} value={v.id}>สัตวแพทย์: {v.display_name}</option>)}
                       </select>

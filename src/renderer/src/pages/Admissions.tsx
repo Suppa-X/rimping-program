@@ -146,7 +146,7 @@ export function AdmitModal(props: { pet?: any; onClose: () => void; onDone: (id:
           <input value={f.cage ?? ''} onChange={(e) => set('cage', e.target.value)} placeholder="A3" />
         </Field>
         <Field label="สัตวแพทย์เจ้าของไข้">
-          <select value={f.vet_id} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>
