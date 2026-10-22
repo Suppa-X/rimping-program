@@ -1,7 +1,8 @@
 // Web demo: serves the same React screens and backend over HTTP so the app can be tried in any browser.
 // Run with: npm run web   → http://localhost:5180  (uses its own demo database in ./web-demo-data)
+// Online (Render.com): RIMPING_PUBLIC=1 HOST=0.0.0.0 — fresh sample data on every start, risky actions blocked.
 import { createServer } from 'node:http'
-import { readFileSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
 import { openDb } from '../main/db'
 import { authApi } from '../main/auth'
@@ -14,6 +15,8 @@ import { seedDemo, seedQueue } from '../../tests/demo-seed'
 
 process.env.RIMPING_DEMO = '1'
 const PORT = Number(process.env.PORT ?? 5180)
+const HOST = process.env.HOST ?? '127.0.0.1'
+const PUBLIC = process.env.RIMPING_PUBLIC === '1'
 const dataDir = process.env.RIMPING_DATA ?? join(process.cwd(), 'web-demo-data')
 const root = join(__dirname, '..', 'renderer')
 
@@ -25,6 +28,14 @@ const handlers: Record<string, (args: any) => any> = {
   ...admissionsApi,
   ...systemApi,
   ...demoApi
+}
+
+// On the public demo anyone can click anything, so block actions that touch the server's files or lock others out.
+const BLOCKED_PUBLIC: Record<string, string> = {
+  'system.backupNow': 'การสำรองข้อมูลใช้ได้ในโปรแกรมบนเครื่องเท่านั้น (เว็บนี้เป็น Demo)',
+  'auth.changePin': 'เว็บ Demo ไม่อนุญาตให้เปลี่ยน PIN เพื่อให้ทุกคนเข้าใช้ได้',
+  'users.save': 'เว็บ Demo ไม่อนุญาตให้แก้ไขผู้ใช้ เพื่อให้ทุกคนเข้าใช้ได้',
+  'attachments.add': 'การแนบไฟล์ใช้ได้ในโปรแกรมบนเครื่องเท่านั้น (เว็บนี้เป็น Demo)'
 }
 
 const call = async (method: string, args: unknown = {}): Promise<any> => handlers[method](args)
@@ -40,6 +51,7 @@ const TYPES: Record<string, string> = {
 }
 
 async function main(): Promise<void> {
+  if (PUBLIC) rmSync(dataDir, { recursive: true, force: true })
   mkdirSync(dataDir, { recursive: true })
   openDb(join(dataDir, 'rimping.db'))
   if (await call('auth.needsSetup')) await seedDemo(call, join(dataDir, 'backup'))
@@ -49,12 +61,17 @@ async function main(): Promise<void> {
   createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/api') {
       let body = ''
-      req.on('data', (c) => (body += c))
+      req.on('data', (c) => {
+        body += c
+        if (body.length > 1_000_000) req.destroy()
+      })
       req.on('end', async () => {
         let out: unknown
         try {
           const { method, args } = JSON.parse(body)
           const fn = handlers[method]
+          if (PUBLIC && BLOCKED_PUBLIC[method]) throw new Error(BLOCKED_PUBLIC[method])
+          if (PUBLIC && method === 'settings.save' && args) delete args.backup_dir
           out = fn ? { ok: true, data: await fn(args ?? {}) } : { ok: false, error: `Unknown method: ${method}` }
         } catch (e: any) {
           out = { ok: false, error: e?.message ?? String(e) }
@@ -69,7 +86,7 @@ async function main(): Promise<void> {
     if (!file.startsWith(root) || !existsSync(file) || path === '') file = join(root, 'index.html')
     res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' })
     res.end(readFileSync(file))
-  }).listen(PORT, '127.0.0.1', () => console.log(`Rimping web demo → http://localhost:${PORT}`))
+  }).listen(PORT, HOST, () => console.log(`Rimping web demo → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`))
 }
 
 main()

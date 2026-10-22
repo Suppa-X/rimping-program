@@ -157,8 +157,10 @@ function Login({ onLogin }: { onLogin: (m: Me) => void }) {
   const [users, setUsers] = useState<{ username: string; display_name: string }[]>([])
   const [username, setUsername] = useState('')
   const [pin, setPin] = useState('')
+  const [demo, setDemo] = useState(false)
   const act = useAction()
   useEffect(() => {
+    api<{ demo?: boolean }>('system.info').then((i) => setDemo(!!i?.demo))
     api('auth.usernames').then((u) => {
       setUsers(u)
       if (u.length === 1) setUsername(u[0].username)
@@ -188,6 +190,11 @@ function Login({ onLogin }: { onLogin: (m: Me) => void }) {
       <div className="box">
         <img src={logo} alt="" />
         <h2 className="center">เลือกชื่อของคุณ แล้วกดรหัส PIN</h2>
+        {demo && (
+          <p className="muted center" style={{ margin: 0 }}>
+            โหมดทดลอง — PIN: เจ้าของร้าน 1111 · ผู้จัดการ 2222 · พนักงาน 3333
+          </p>
+        )}
         <div className="userpick">
           {users.map((u) => (
             <button key={u.username} className={username === u.username ? 'active' : ''} onClick={() => { setUsername(u.username); setPin('') }}>
