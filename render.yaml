@@ -1,0 +1,20 @@
+# Render.com Blueprint — puts the web demo online (sample data only, never the clinic's real database).
+# Setup: Render dashboard → New → Blueprint → pick this repository → Apply.
+services:
+  - type: web
+    name: rimping-demo
+    runtime: node
+    plan: free
+    branch: master
+    buildCommand: npm ci && npm run web:build
+    startCommand: npm run web:start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: ELECTRON_SKIP_BINARY_DOWNLOAD
+        value: "1"
+      - key: HOST
+        value: 0.0.0.0
+      - key: RIMPING_PUBLIC
+        value: "1"

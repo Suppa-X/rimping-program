@@ -83,7 +83,8 @@ export const systemApi = {
     db_path: join(app.getPath('userData'), 'rimping.db'),
     backup_dir: backupDir(),
     last_backup: lastBackupDate(),
-    pending_sync: (all<{ n: number }>('SELECT COUNT(*) AS n FROM sync_outbox WHERE synced_at IS NULL')[0]?.n ?? 0)
+    pending_sync: (all<{ n: number }>('SELECT COUNT(*) AS n FROM sync_outbox WHERE synced_at IS NULL')[0]?.n ?? 0),
+    demo: process.env.RIMPING_DEMO === '1'
   })
 }
 

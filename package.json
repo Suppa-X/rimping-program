@@ -15,7 +15,9 @@
     "selftest": "rolldown tests/selftest.ts --platform node --format cjs -e electron -e qrcode -e promptpay-qr -e node:sqlite -o out/selftest.js && electron out/selftest.js",
     "screens": "electron-vite build && rolldown tests/screens.ts --platform node --format cjs -e electron -e ./main/index.js -o out/screens.js && electron out/screens.js",
     "demo": "electron-vite build && rolldown tests/demo.ts --platform node --format cjs -e electron -e ./main/index.js -o out/demo.js && electron out/demo.js",
-    "web": "electron-vite build && rolldown -c rolldown.web.config.mjs && node out/web/server.js"
+    "web": "npm run web:build && npm run web:start",
+    "web:build": "electron-vite build && rolldown -c rolldown.web.config.mjs",
+    "web:start": "node out/web/server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
