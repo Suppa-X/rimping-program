@@ -1,4 +1,4 @@
-import{n as e,r as t}from"./index-BE-E3dzj.js";var n=t(),r=()=>globalThis.crypto.randomUUID(),i=e=>n.Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(e)));function a(e,t,r){let i=n.Buffer.alloc(r),a=2166136261,o=e+n.Buffer.from(t).toString(`hex`);for(let e=0;e<r;e++){for(let t of o+e)a=Math.imul(a^t.charCodeAt(0),16777619);i[e]=a&255}return i}var o=(e,t)=>e.length===t.length&&e.every((e,n)=>e===t[n]),s,c=[`users`,`customers`,`pets`,`visits`,`vaccine_types`,`vaccinations`,`products`,`stock_moves`,`invoices`,`invoice_items`,`payments`,`shifts`,`queue`,`attachments`,`admissions`,`admission_charges`,`appointments`],l=[`
+import{n as e,r as t}from"./index-B_vK-rvb.js";var n=t(),r=()=>globalThis.crypto.randomUUID(),i=e=>n.Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(e)));function a(e,t,r){let i=n.Buffer.alloc(r),a=2166136261,o=e+n.Buffer.from(t).toString(`hex`);for(let e=0;e<r;e++){for(let t of o+e)a=Math.imul(a^t.charCodeAt(0),16777619);i[e]=a&255}return i}var o=(e,t)=>e.length===t.length&&e.every((e,n)=>e===t[n]),s,c=[`users`,`customers`,`pets`,`visits`,`vaccine_types`,`vaccinations`,`products`,`stock_moves`,`invoices`,`invoice_items`,`payments`,`shifts`,`queue`,`attachments`,`admissions`,`admission_charges`,`appointments`],l=[`
   CREATE TABLE settings (
     key   TEXT PRIMARY KEY,
     value TEXT
@@ -421,6 +421,8 @@ import{n as e,r as t}from"./index-BE-E3dzj.js";var n=t(),r=()=>globalThis.crypto
     updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
   CREATE INDEX idx_appt_date ON appointments(appt_date, status);
+  `,`
+  ALTER TABLE queue ADD COLUMN appointment_id TEXT REFERENCES appointments(id);
   `];function u(){return c.map(e=>`
     CREATE TRIGGER IF NOT EXISTS trg_${e}_ins AFTER INSERT ON ${e}
     BEGIN INSERT INTO sync_outbox (tbl,row_id,op) VALUES ('${e}', NEW.id, 'upsert'); END;
