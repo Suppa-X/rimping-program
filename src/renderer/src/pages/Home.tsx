@@ -1,137 +1,132 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, UserPlus, ShoppingBag, Syringe, Stethoscope, Clock, CreditCard, CheckCircle2, ListPlus, FileText,
-  TrendingUp, Receipt, AlertTriangle, X, ChevronRight, Banknote, BedDouble
+  Search, UserPlus, ShoppingBag, Clock, Clock3, CreditCard, CheckCircle2, ListPlus, TrendingUp, Receipt, AlertTriangle,
+  ChevronRight, Banknote, CalendarCheck, Footprints
 } from 'lucide-react'
-import { api, money, thDate } from '../api'
-import { useApi, useAction, useSession, Modal, Field, SpeciesIcon, Hint, initial } from '../ui'
+import { api, money, thDate, todayStr, longDate } from '../api'
+import { useApi, useAction, useSession, Modal, Field, SpeciesIcon, Empty, initial } from '../ui'
 import { CustomerForm } from './forms'
-
-const LANES = [
-  { key: 'waiting', label: 'รอตรวจ', color: '#f08a33', icon: Clock },
-  { key: 'in_exam', label: 'กำลังตรวจ', color: '#6b4fc4', icon: Stethoscope },
-  { key: 'to_pay', label: 'รอชำระเงิน', color: '#2b7bc4', icon: CreditCard },
-  { key: 'done', label: 'เสร็จแล้ว', color: '#17895a', icon: CheckCircle2 }
-]
+import { payUrl } from './Exam'
 
 const REASONS = ['ตรวจรักษา', 'ฉีดวัคซีน', 'ตรวจติดตามอาการ', 'ทำแผล', 'ถ่ายพยาธิ/หยดเห็บหมัด', 'ซื้อยา/อาหาร']
+const STATUS_TONE: Record<string, string> = { waiting: 'orange', in_exam: 'violet', to_pay: 'emerald', done: 'slate' }
+const STATUS_TEXT: Record<string, string> = { waiting: 'รอตรวจ', in_exam: 'กำลังตรวจ', to_pay: 'รอชำระ', done: 'เสร็จแล้ว' }
 
 export default function Home() {
   const nav = useNavigate()
   const act = useAction()
-  const { me, refreshShift } = useSession()
+  const { me, shift, refreshShift } = useSession()
   const [d, reloadDash] = useApi<any>('reports.dashboard')
   const [queue, reloadQueue] = useApi<any[]>('queue.today')
+  const [appts, reloadAppts] = useApi<any[]>('appointments.list', { from: todayStr(), to: todayStr() })
   const [enqueue, setEnqueue] = useState<any | null>(null)
   const [creating, setCreating] = useState(false)
 
-  useEffect(() => {
-    const t = setInterval(() => {
-      reloadQueue()
-      reloadDash()
-    }, 20000)
-    return () => clearInterval(t)
-  }, [reloadQueue, reloadDash])
-
-  const setStatus = async (q: any, status: string): Promise<void> => {
-    await act(() => api('queue.setStatus', { id: q.id, status, vet_id: status === 'in_exam' && me.is_vet ? me.id : undefined }))
+  const reloadAll = (): void => {
     reloadQueue()
     reloadDash()
+    reloadAppts()
   }
-  const startExam = async (q: any): Promise<void> => {
-    if (q.status === 'waiting') await setStatus(q, 'in_exam')
-    nav(`/pets/${q.pet_id}?queue=${q.id}&exam=1`)
+  useEffect(() => {
+    const t = setInterval(reloadAll, 20000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const arrived = async (a: any): Promise<void> => {
+    if (await act(() => api('queue.add', { pet_id: a.pet_id, appointment_id: a.id }), `${a.pet_name} เข้าคิวแล้ว (มีนัด)`)) reloadAll()
   }
-  const pay = (q: any): void => void
-    nav(`/pos?customer=${q.customer_id}&pet=${q.pet_id}&queue=${q.id}${q.visit_id ? `&visit=${q.visit_id}` : ''}${q.vet_id ? `&vet=${q.vet_id}` : ''}`)
+  const openQueue = (q: any): void => {
+    nav(q.status === 'to_pay' ? payUrl(q) : q.status === 'done' && q.invoice_id ? `/invoices/${q.invoice_id}` : '/exam')
+  }
 
   const max7 = Math.max(1, ...(d?.last7 ?? []).map((x: any) => x.total))
+  const pending = (appts ?? []).filter((a) => a.status === 'pending')
+  const hour = new Date().getHours()
+  const steps = [
+    { n: 1, label: 'เปิดกะ', done: !!shift, to: '/finance/shift', tone: 'gold' },
+    { n: 2, label: 'รับลูกค้าเข้าคิว', done: (queue ?? []).length > 0, to: '/', tone: 'sky' },
+    { n: 3, label: 'ตรวจรักษา', done: false, to: '/exam', tone: 'violet' },
+    { n: 4, label: 'คิดเงิน + ใบเสร็จ', done: false, to: '/billing', tone: 'emerald' },
+    { n: 5, label: 'ปิดกะ นับเงิน', done: false, to: '/finance/shift', tone: 'coral' }
+  ]
 
   return (
     <>
-      <div className="page-head">
-        <div className="grow">
+      <div className="hero">
+        <div className="hero-text">
+          <div className="hero-date">{longDate(todayStr())}</div>
           <h1>สวัสดีครับ {me.display_name}</h1>
-          <div className="lead">วันนี้ {thDate(d?.date)} — เริ่มจากค้นหาลูกค้า หรือดูคิวด้านล่าง</div>
+          <div className="hero-sub">ลูกค้ามาถึง → ค้นหาชื่อแล้วกด "เข้าคิว" · ลูกค้าที่มีนัด กด "มาถึงแล้ว"</div>
+        </div>
+        <div className="hero-kpis">
+          <button className="kpi t-orange" onClick={() => nav('/exam')}><Clock /><b>{d?.queue_to_exam ?? 0}</b><span>รอตรวจ</span></button>
+          <button className="kpi t-emerald" onClick={() => nav('/billing')}><CreditCard /><b>{d?.queue_to_pay ?? 0}</b><span>รอชำระ</span></button>
+          <button className="kpi t-rose" onClick={() => nav('/appointments')}><CalendarCheck /><b>{pending.length}</b><span>นัดที่ยังไม่มา</span></button>
+          <button className="kpi t-gold" onClick={() => nav('/finance')}><TrendingUp /><b>{money(d?.sales_total ?? 0).replace(/\.00$/, '')}</b><span>ยอดขายวันนี้</span></button>
         </div>
       </div>
 
-      <CustomerSearch onQueue={(pet) => setEnqueue(pet)} />
+      <div className="daysteps">
+        {steps.map((s) => (
+          <button key={s.n} className={`daystep ${s.tone} ${s.done ? 'done' : ''}`} onClick={() => nav(s.to)}>
+            <span className="n">{s.done ? <CheckCircle2 size={18} /> : s.n}</span> {s.label}
+          </button>
+        ))}
+      </div>
 
-      <div className="actions" style={{ marginTop: 16 }}>
-        <button className="action" onClick={() => setCreating(true)}>
-          <div className="ico" style={{ background: 'var(--blue-soft)', color: 'var(--blue)' }}><UserPlus size={28} /></div>
-          <div><b>ลูกค้าใหม่</b><span>ลงทะเบียนเจ้าของและสัตว์เลี้ยง</span></div>
-        </button>
-        <button className="action" onClick={() => nav('/pos')}>
-          <div className="ico" style={{ background: 'var(--ok-soft)', color: 'var(--ok)' }}><ShoppingBag size={28} /></div>
-          <div><b>ขายของหน้าร้าน</b><span>อาหาร ทราย ยา (ไม่ต้องตรวจ)</span></div>
-        </button>
-        <button className="action" onClick={() => nav('/appointments')}>
-          <div className="ico" style={{ background: 'var(--purple-soft)', color: 'var(--purple)' }}><Syringe size={28} /></div>
-          <div><b>นัดวันนี้ {d?.appt_today ? `(${d.appt_today})` : ''}</b><span>{d?.appt_uncalled ? `ยังไม่ได้โทรแจ้ง ${d.appt_uncalled} นัด` : 'นัดหมายและวัคซีนครบกำหนด'}</span></div>
-        </button>
-        <button className="action" onClick={() => nav('/admissions')}>
-          <div className="ico" style={{ background: 'var(--orange-soft)', color: 'var(--orange)' }}><BedDouble size={28} /></div>
-          <div><b>Admit / ฝากเลี้ยง {d?.admitted ? `(${d.admitted})` : ''}</b><span>ลงค่าใช้จ่ายรายวัน / รับกลับ</span></div>
-        </button>
+      <div className="arrive">
+        <div className="card tinted sky">
+          <div className="card-head">
+            <span className="gem sky"><Footprints /></span>
+            <div className="grow">
+              <h2>ลูกค้ามาเอง (Walk-in)</h2>
+              <div className="muted small">ลูกค้าเก่า: พิมพ์ชื่อ เบอร์ หรือชื่อสัตว์ แล้วกด "เข้าคิว" · ลูกค้าใหม่: กด "ลงทะเบียนลูกค้าใหม่"</div>
+            </div>
+          </div>
+          <CustomerSearch onQueue={(pet) => setEnqueue(pet)} />
+          <div className="row" style={{ marginTop: 12 }}>
+            <button onClick={() => setCreating(true)}><UserPlus /> ลงทะเบียนลูกค้าใหม่</button>
+            <button className="secondary" onClick={() => nav('/shop')}><ShoppingBag /> ซื้อของอย่างเดียว (ไม่ตรวจ)</button>
+          </div>
+        </div>
+        <div className="card tinted rose">
+          <div className="card-head">
+            <span className="gem rose"><CalendarCheck /></span>
+            <div className="grow">
+              <h2>มีนัดวันนี้ ({appts?.length ?? 0})</h2>
+              <div className="muted small">ลูกค้ามาตามนัด กด "มาถึงแล้ว" ระบบจะเข้าคิวให้เลย</div>
+            </div>
+          </div>
+          {appts?.length === 0 && <Empty text="วันนี้ไม่มีนัด" />}
+          <div className="stack" style={{ gap: 8 }}>
+            {(appts ?? []).map((a) => (
+              <div key={a.id} className="appt-row">
+                <span className="time">{a.appt_time ?? '—'}</span>
+                <SpeciesIcon species={a.species} size={18} />
+                <div className="grow" style={{ minWidth: 0 }}>
+                  <b>{a.pet_name}</b> <span className="muted small">{a.owner_name}</span>
+                  <div className="small">{a.topic}</div>
+                </div>
+                {a.status === 'pending' ? (
+                  <button className="ok" onClick={() => arrived(a)}><ListPlus /> มาถึงแล้ว</button>
+                ) : (
+                  <span className={`badge ${a.status === 'done' ? 'ok' : 'bad'}`}>{a.status === 'done' ? 'เข้าคิวแล้ว' : 'ไม่มา'}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="card" style={{ marginTop: 18 }}>
         <div className="card-head">
-          <h2 className="grow"><ListPlus /> คิววันนี้</h2>
-          <span className="muted small">ค้นหาลูกค้าด้านบน แล้วกด "เข้าคิว"</span>
+          <span className="gem violet"><Clock3 /></span>
+          <h2 className="grow">ตารางวันนี้ตามช่วงเวลา</h2>
+          <span className="legend"><i className="rose" /> นัดที่ยังไม่มา <i className="orange" /> รอตรวจ <i className="violet" /> กำลังตรวจ <i className="emerald" /> รอชำระ <i className="slate" /> เสร็จ</span>
         </div>
-        <div className="board">
-          {LANES.map((lane) => {
-            const items = (queue ?? []).filter((q) => q.status === lane.key)
-            return (
-              <div key={lane.key} className="lane">
-                <div className="lane-head">
-                  <lane.icon size={20} color={lane.color} /> {lane.label}
-                  <span className="n">{items.length}</span>
-                </div>
-                {items.length === 0 && <div className="lane-empty">ว่าง</div>}
-                {items.map((q) => (
-                  <div key={q.id} className="qcard" style={{ borderLeftColor: lane.color }}>
-                    <div className="row" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-                      <div className="no">{q.queue_no}</div>
-                      <div className="grow" style={{ minWidth: 0 }}>
-                        <div className="pet">{q.pet_name} <span className="muted small">({q.species})</span></div>
-                        <div className="meta">{q.owner_name} · {q.phone}</div>
-                      </div>
-                      {lane.key !== 'done' && (
-                        <button className="ghost" aria-label="ยกเลิกคิว" title="ยกเลิกคิว" onClick={() => setStatus(q, 'cancelled')}><X size={16} /></button>
-                      )}
-                    </div>
-                    {q.reason && <div className="badge" style={{ marginTop: 6 }}>{q.reason}</div>}
-                    {(q.allergy_note || q.warning_note) && (
-                      <div className="tiny" style={{ color: 'var(--bad)', marginTop: 6 }}>
-                        <AlertTriangle size={13} style={{ verticalAlign: -2 }} /> {[q.allergy_note && `แพ้ ${q.allergy_note}`, q.warning_note].filter(Boolean).join(' · ')}
-                      </div>
-                    )}
-                    <div className="meta" style={{ marginTop: 4 }}>
-                      เข้าคิว {q.created_at.slice(11, 16)} {q.vet_name && `· ${q.vet_name}`}
-                    </div>
-                    <div className="acts">
-                      {q.status === 'waiting' && <button onClick={() => startExam(q)}><Stethoscope /> เริ่มตรวจ</button>}
-                      {q.status === 'waiting' && <button className="secondary" onClick={() => pay(q)}>ไม่ตรวจ → คิดเงิน</button>}
-                      {q.status === 'in_exam' && <button onClick={() => startExam(q)}><FileText /> บันทึกการตรวจ</button>}
-                      {q.status === 'in_exam' && <button className="secondary" onClick={() => setStatus(q, 'to_pay')}>ส่งไปชำระเงิน</button>}
-                      {q.status === 'to_pay' && <button className="ok" onClick={() => pay(q)}><CreditCard /> รับเงิน</button>}
-                      {q.status === 'done' && q.invoice_id && (
-                        <button className="ghost" onClick={() => nav(`/invoices/${q.invoice_id}`)}>
-                          <Receipt /> {q.invoice_no} · {money(q.invoice_total)}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </div>
+        <Timeline queue={queue ?? []} appts={pending} hour={hour} onQueue={openQueue} onAppt={arrived} />
       </div>
 
       {d && (
@@ -149,7 +144,7 @@ export default function Home() {
                 <div className="sub">เงินสด {money(d.received.cash ?? 0)} · โอน/QR {money((d.received.transfer ?? 0) + (d.received.promptpay ?? 0))}</div>
               </div>
             </div>
-            <div className="stat clickable" onClick={() => nav('/finance/outstanding')}>
+            <div className="stat clickable" onClick={() => nav('/billing')}>
               <div className={`ico ${d.outstanding_count ? 'bad' : ''}`}><Receipt /></div>
               <div><div className="label">ลูกค้าค้างชำระ</div><div className="value">{money(d.outstanding_amount)}</div><div className="sub">{d.outstanding_count} บิล</div></div>
             </div>
@@ -176,26 +171,68 @@ export default function Home() {
         </div>
       )}
 
-      <div style={{ marginTop: 18 }}>
-        <Hint>
-          <b>ขั้นตอนประจำวัน:</b> เปิดกะ → ลูกค้ามา ค้นหาชื่อแล้วกด "เข้าคิว" → หมอกด "เริ่มตรวจ" บันทึกอาการ → หน้าร้านกด "รับเงิน" พิมพ์ใบเสร็จ → ปิดร้านกด "ปิดกะ" นับเงิน
-        </Hint>
-      </div>
-
       {enqueue && (
         <EnqueueModal
           pet={enqueue}
           onClose={() => setEnqueue(null)}
           onDone={() => {
             setEnqueue(null)
-            reloadQueue()
-            reloadDash()
+            reloadAll()
             refreshShift()
           }}
         />
       )}
       {creating && <CustomerForm onClose={() => setCreating(false)} onSaved={(id) => nav(`/customers/${id}?newpet=1`)} />}
     </>
+  )
+}
+
+/** Hour rows from opening to closing; queue entries sit at their booked time (or arrival time for walk-ins). */
+function Timeline(props: { queue: any[]; appts: any[]; hour: number; onQueue: (q: any) => void; onAppt: (a: any) => void }) {
+  const at = (t?: string | null): number => (t ? Number(t.slice(0, 2)) : -1)
+  const qHour = (q: any): number => (q.appointment_id && q.appt_time ? at(q.appt_time) : at(q.created_at.slice(11, 16)))
+  const used = [...props.queue.map(qHour), ...props.appts.map((a) => at(a.appt_time)).filter((h) => h >= 0)]
+  const from = Math.min(8, ...used)
+  const to = Math.max(19, ...used)
+  const noTime = props.appts.filter((a) => !a.appt_time)
+  return (
+    <div className="tl">
+      {noTime.length > 0 && (
+        <div className="tl-row">
+          <div className="tl-time">ไม่ระบุเวลา</div>
+          <div className="tl-items">
+            {noTime.map((a) => <ApptChip key={a.id} a={a} onClick={() => props.onAppt(a)} />)}
+          </div>
+        </div>
+      )}
+      {Array.from({ length: to - from + 1 }, (_, i) => from + i).map((h) => {
+        const qs = props.queue.filter((q) => qHour(q) === h)
+        const as = props.appts.filter((a) => at(a.appt_time) === h)
+        return (
+          <div key={h} className={`tl-row ${h === props.hour ? 'now' : ''} ${qs.length + as.length === 0 ? 'empty' : ''}`}>
+            <div className="tl-time">{String(h).padStart(2, '0')}:00{h === props.hour && <span className="now-tag">ตอนนี้</span>}</div>
+            <div className="tl-items">
+              {as.map((a) => <ApptChip key={a.id} a={a} onClick={() => props.onAppt(a)} />)}
+              {qs.map((q) => (
+                <button key={q.id} className={`tl-chip t-${STATUS_TONE[q.status]}`} onClick={() => props.onQueue(q)} title="กดเพื่อไปทำงานต่อ">
+                  <b>#{q.queue_no} {q.pet_name}</b>
+                  <span>{q.appointment_id ? `นัด ${q.appt_time ?? ''}` : `Walk-in ${q.created_at.slice(11, 16)}`} · {STATUS_TEXT[q.status]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function ApptChip({ a, onClick }: { a: any; onClick: () => void }) {
+  return (
+    <button className="tl-chip t-rose t-dashed" onClick={onClick} title='กดเมื่อลูกค้ามาถึง เพื่อเข้าคิว'>
+      <b>{a.appt_time ?? ''} {a.pet_name}</b>
+      <span>นัด: {a.topic} · ยังไม่มา</span>
+    </button>
   )
 }
 
@@ -257,7 +294,7 @@ function CustomerSearch({ onQueue }: { onQueue: (pet: any) => void }) {
                       <b>{p.name}</b>
                       <span className="muted small">{p.species} {p.breed && `· ${p.breed}`}</span>
                       <div className="grow" />
-                      <button onClick={() => { setOpen(false); onQueue({ ...p, owner_name: c.name }) }}><ListPlus /> เข้าคิว</button>
+                      <button onClick={() => { setOpen(false); onQueue({ ...p, owner_name: c.name }) }}><ListPlus /> เข้าคิว (Walk-in)</button>
                       <button className="secondary" onClick={() => nav(`/pets/${p.id}`)}>ประวัติ</button>
                     </div>
                   ))}

@@ -350,24 +350,36 @@ export const clinicApi = {
   'queue.today': () =>
     all(
       `SELECT q.*, p.name AS pet_name, p.species, p.allergy_note, p.warning_note,
-              c.name AS owner_name, c.phone, u.display_name AS vet_name, i.invoice_no, i.total AS invoice_total
+              c.name AS owner_name, c.phone, u.display_name AS vet_name, i.invoice_no, i.total AS invoice_total,
+              ap.appt_time
        FROM queue q JOIN pets p ON p.id = q.pet_id JOIN customers c ON c.id = q.customer_id
        LEFT JOIN users u ON u.id = q.vet_id LEFT JOIN invoices i ON i.id = q.invoice_id
+       LEFT JOIN appointments ap ON ap.id = q.appointment_id
        WHERE q.queue_date = ? AND q.status <> 'cancelled' ORDER BY q.queue_no`,
       today()
     ),
 
-  'queue.add': (a: { pet_id: string; reason?: string }) => {
+  /** Add a pet to today's queue. With appointment_id it is a check-in for that appointment, otherwise a walk-in. */
+  'queue.add': (a: { pet_id: string; reason?: string; appointment_id?: string }) => {
     const u = requireUser()
     const pet = one<any>('SELECT * FROM pets WHERE id = ?', a.pet_id)
     if (!pet) throw new Error('ไม่พบสัตว์เลี้ยง')
+    const appt = a.appointment_id ? one<any>('SELECT * FROM appointments WHERE id = ?', a.appointment_id) : null
+    if (a.appointment_id && (!appt || appt.pet_id !== pet.id)) throw new Error('ไม่พบนัดหมายของสัตว์ตัวนี้')
     return tx(() => {
       const d = today()
       const dup = one<any>(
-        "SELECT queue_no FROM queue WHERE pet_id = ? AND queue_date = ? AND status IN ('waiting','in_exam','to_pay')",
+        "SELECT id, queue_no FROM queue WHERE pet_id = ? AND queue_date = ? AND status IN ('waiting','in_exam','to_pay')",
         a.pet_id,
         d
       )
+      // Came in early for their appointment: attach the appointment to the queue entry they already have.
+      if (dup && appt) {
+        update('queue', dup.id, { appointment_id: appt.id })
+        update('appointments', appt.id, { status: 'done' })
+        audit(u.id, 'queue.checkin', 'queue', dup.id, { appointment_id: appt.id })
+        return { id: dup.id, queue_no: dup.queue_no }
+      }
       if (dup) throw new Error(`${pet.name} อยู่ในคิวแล้ว (คิวที่ ${dup.queue_no})`)
       const no = one<{ n: number }>('SELECT COALESCE(MAX(queue_no),0) + 1 AS n FROM queue WHERE queue_date = ?', d)!.n
       const id = uid()
@@ -377,11 +389,13 @@ export const clinicApi = {
         queue_date: d,
         customer_id: pet.customer_id,
         pet_id: pet.id,
-        reason: a.reason,
+        reason: a.reason || appt?.topic,
         status: 'waiting',
+        appointment_id: appt?.id,
         created_by: u.id
       })
-      audit(u.id, 'queue.add', 'queue', id, { queue_no: no })
+      if (appt) update('appointments', appt.id, { status: 'done' })
+      audit(u.id, 'queue.add', 'queue', id, { queue_no: no, appointment_id: appt?.id })
       return { id, queue_no: no }
     })
   },
@@ -447,5 +461,52 @@ export const clinicApi = {
          AND x.next_due_date <= date('now','localtime', ?)
        ORDER BY x.next_due_date`,
       `+${a.days ?? 14} days`
-    )
+    ),
+
+  /* ---------- calendar ---------- */
+  /** Per-day counts for a month ("2026-10"): appointments, queue visits, vaccines due and sales. */
+  'calendar.month': (a: { month: string }) => {
+    requireUser()
+    const from = `${a.month}-01`
+    const to = `${a.month}-31`
+    const days: Record<string, any> = {}
+    const day = (d: string): any => (days[d] ??= { appts: 0, appts_pending: 0, queue: 0, vaccines: 0, sales: 0 })
+    for (const r of all<any>(
+      `SELECT appt_date AS d, COUNT(*) AS n, SUM(status = 'pending') AS pending FROM appointments
+       WHERE appt_date BETWEEN ?1 AND ?2 AND status <> 'cancelled' GROUP BY appt_date`, from, to)) {
+      day(r.d).appts = r.n
+      day(r.d).appts_pending = r.pending
+    }
+    for (const r of all<any>(
+      `SELECT queue_date AS d, COUNT(*) AS n FROM queue WHERE queue_date BETWEEN ?1 AND ?2 AND status <> 'cancelled' GROUP BY queue_date`, from, to))
+      day(r.d).queue = r.n
+    for (const r of all<any>(
+      `SELECT x.next_due_date AS d, COUNT(*) AS n FROM vaccinations x JOIN pets p ON p.id = x.pet_id
+       WHERE x.done_followup = 0 AND x.next_due_date BETWEEN ?1 AND ?2 AND p.deceased = 0 AND p.active = 1 GROUP BY x.next_due_date`, from, to))
+      day(r.d).vaccines = r.n
+    for (const r of all<any>(
+      `SELECT date(issued_at) AS d, SUM(total) AS t FROM invoices WHERE date(issued_at) BETWEEN ?1 AND ?2 AND status <> 'void' GROUP BY date(issued_at)`, from, to))
+      day(r.d).sales = r.t
+    return days
+  },
+
+  /** Everything booked or seen on one day, for the calendar's day panel. */
+  'calendar.day': (a: { date: string }) => {
+    requireUser()
+    return {
+      appointments: all(
+        `SELECT ap.*, p.name AS pet_name, p.species, c.name AS owner_name, c.phone, u.display_name AS vet_name
+         FROM appointments ap JOIN pets p ON p.id = ap.pet_id JOIN customers c ON c.id = ap.customer_id
+         LEFT JOIN users u ON u.id = ap.vet_id
+         WHERE ap.appt_date = ? AND ap.status <> 'cancelled' ORDER BY COALESCE(ap.appt_time, '99')`, a.date),
+      queue: all(
+        `SELECT q.*, p.name AS pet_name, p.species, c.name AS owner_name, c.phone
+         FROM queue q JOIN pets p ON p.id = q.pet_id JOIN customers c ON c.id = q.customer_id
+         WHERE q.queue_date = ? AND q.status <> 'cancelled' ORDER BY q.queue_no`, a.date),
+      vaccines: all(
+        `SELECT x.id, x.name, p.id AS pet_id, p.name AS pet_name, p.species, c.name AS owner_name, c.phone
+         FROM vaccinations x JOIN pets p ON p.id = x.pet_id JOIN customers c ON c.id = p.customer_id
+         WHERE x.done_followup = 0 AND x.next_due_date = ? AND p.deceased = 0 AND p.active = 1`, a.date)
+    }
+  }
 }

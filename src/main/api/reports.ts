@@ -181,6 +181,8 @@ export const reportsApi = {
       "SELECT COUNT(*) AS n FROM queue WHERE queue_date = ? AND status IN ('waiting','in_exam','to_pay')",
       d
     )!.n
+    const toExam = one<{ n: number }>("SELECT COUNT(*) AS n FROM queue WHERE queue_date = ? AND status IN ('waiting','in_exam')", d)!.n
+    const toPay = one<{ n: number }>("SELECT COUNT(*) AS n FROM queue WHERE queue_date = ? AND status = 'to_pay'", d)!.n
     const apptToday = one<{ n: number }>("SELECT COUNT(*) AS n FROM appointments WHERE appt_date = ? AND status = 'pending'", d)!.n
     const apptUncalled = one<{ n: number }>(
       "SELECT COUNT(*) AS n FROM appointments WHERE status = 'pending' AND called_at IS NULL AND appt_date BETWEEN ? AND date(?, '+2 days')",
@@ -195,6 +197,8 @@ export const reportsApi = {
       appt_uncalled: apptUncalled,
       admitted,
       queue_waiting: queueWaiting,
+      queue_to_exam: toExam,
+      queue_to_pay: toPay,
       bills: sales.bills,
       sales_total: r2(sales.total),
       unpaid_today: r2(sales.unpaid),

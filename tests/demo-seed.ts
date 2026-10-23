@@ -143,6 +143,19 @@ export async function seedDemo(call: Call, backupDir: string): Promise<void> {
   await call('appointments.save', { pet_id: somsri.pets[0], appt_date: daysAgo(0), appt_time: '14:00', topic: 'ตรวจติดตามอาการ', detail: 'ดูอาการท้องเสีย', vet_id: me.id })
   await call('appointments.save', { pet_id: pond.pets[0], appt_date: daysAgo(-1), appt_time: '10:30', topic: 'ทำหมัน', detail: 'งดอาหารและน้ำก่อนมา 8 ชั่วโมง', vet_id: me.id })
   await call('appointments.save', { pet_id: nida.pets[1], appt_date: daysAgo(3), topic: 'นัดวัคซีน', detail: 'วัคซีนรวมแมวเข็มที่ 2' })
+  // More bookings spread over the month so the calendar has something to show.
+  const spread: [string, number, string, string][] = [
+    [somchai.pets[0], 0, '10:00', 'นัดวัคซีน'],
+    [nida.pets[0], 0, '16:30', 'ตัดไหม/ทำแผล'],
+    [pond.pets[0], 2, '09:30', 'ตรวจเลือด'],
+    [nida.pets[2], 4, '13:00', 'ตรวจติดตามอาการ'],
+    [somsri.pets[0], 6, '11:00', 'ขูดหินปูน'],
+    [somchai.pets[0], 9, '15:00', 'ถ่ายพยาธิ/หยดเห็บหมัด'],
+    [nida.pets[1], 13, '10:00', 'นัดวัคซีน'],
+    [pond.pets[0], 20, '14:30', 'ตรวจติดตามอาการ']
+  ]
+  for (const [pet_id, ahead, appt_time, topic] of spread)
+    await call('appointments.save', { pet_id, appt_date: daysAgo(-ahead), appt_time, topic, vet_id: me.id })
 }
 
 /** Put a few patients in today's queue (once per day) so the board shows each stage. */

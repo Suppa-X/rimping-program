@@ -14,17 +14,27 @@ export default function PrintInvoice() {
   }, [id])
   if (!inv || !s) return null
 
-  const title = inv.vat_enabled ? 'ใบเสร็จรับเงิน/ใบกำกับภาษีอย่างย่อ' : 'ใบเสร็จรับเงิน'
-  const due = Math.round((inv.total - inv.paid_amount) * 100) / 100
-  const payments = inv.payments.filter((p: any) => p.kind === 'payment')
-
   return (
     <>
       <div className="print-toolbar">
         <button onClick={() => window.print()}>🖨️ พิมพ์ (A5)</button>
         <button className="secondary" onClick={() => window.close()}>ปิด</button>
       </div>
+      <Receipt inv={inv} s={s} />
+    </>
+  )
+}
+
+/** The A5 receipt itself; also used as the preview shown before taking payment (inv.preview = true). */
+export function Receipt({ inv, s }: { inv: any; s: any }) {
+  const title = inv.vat_enabled ? 'ใบเสร็จรับเงิน/ใบกำกับภาษีอย่างย่อ' : 'ใบเสร็จรับเงิน'
+  const due = Math.round((inv.total - inv.paid_amount) * 100) / 100
+  const payments = inv.payments.filter((p: any) => p.kind === 'payment')
+
+  return (
+    <>
       <div className="print-page">
+        {inv.preview && <div className="preview-ribbon">ตัวอย่าง — ยังไม่ได้บันทึก</div>}
         <div className="print-head">
           <img src={logo} alt="" />
           <div style={{ flex: 1 }}>

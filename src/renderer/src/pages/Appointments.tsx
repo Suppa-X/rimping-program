@@ -27,7 +27,7 @@ export default function Appointments() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>นัดหมาย</h1>
+          <h1 className="title-ico"><span className="gem rose"><CalendarCheck /></span> จองนัด</h1>
           <div className="lead">นัดตรวจ นัดวัคซีน นัดผ่าตัด — โทรหรือส่ง LINE แจ้งเจ้าของล่วงหน้า แล้วกด "โทรแล้ว"</div>
         </div>
         <button className="big" onClick={() => setCreating(true)}><CalendarPlus /> นัดลูกค้า</button>
@@ -73,12 +73,8 @@ function ApptCard({ r, missed, onChange }: { r: any; missed: boolean; onChange: 
     `สวัสดีค่ะ คุณ${r.owner_name.replace(/^คุณ/, '')} ริมปิงสัตวแพทย์ขอแจ้งนัด ${r.pet_name} ` +
     `เรื่อง${r.topic} ${longDate(r.appt_date)}${r.appt_time ? ` เวลา ${r.appt_time} น.` : ''}${r.detail ? ` (${r.detail})` : ''} 🐾`
   const arrived = async (): Promise<void> => {
-    const ok = await act(async () => {
-      await api('queue.add', { pet_id: r.pet_id, reason: r.topic })
-      await api('appointments.setStatus', { id: r.id, status: 'done' })
-      return true
-    }, `${r.pet_name} เข้าคิวแล้ว`)
-    if (ok) nav('/')
+    const ok = await act(() => api('queue.add', { pet_id: r.pet_id, appointment_id: r.id }), `${r.pet_name} เข้าคิวแล้ว`)
+    if (ok) nav('/exam')
   }
   return (
     <div className="card" style={{ borderLeft: `5px solid ${missed ? 'var(--bad)' : r.called_at ? 'var(--ok)' : 'var(--orange)'}`, borderRadius: 0 }}>

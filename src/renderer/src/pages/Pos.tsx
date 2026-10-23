@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, UserPlus, User, Trash2, CreditCard, Minus, Plus, Banknote, Landmark, QrCode, Wallet, ArrowRight, ArrowLeft, Check, AlertTriangle, Stethoscope } from 'lucide-react'
-import { api, money, openPrint, CATEGORY_LABEL, METHOD_LABEL } from '../api'
-import { useApi, useAction, useSession, ApprovalModal, Empty, initial } from '../ui'
+import { Search, UserPlus, User, Trash2, CreditCard, Minus, Plus, Banknote, Landmark, QrCode, Wallet, ArrowRight, ArrowLeft, Check, AlertTriangle, Stethoscope, ReceiptText, Printer, HandCoins, ShoppingBag } from 'lucide-react'
+import { api, money, openPrint, todayStr, CATEGORY_LABEL, METHOD_LABEL } from '../api'
+import { useApi, useAction, useSession, ApprovalModal, Empty, Modal, initial } from '../ui'
 import { CustomerForm } from './forms'
+import { Receipt } from './PrintInvoice'
 
 interface Line {
   key: number
@@ -23,7 +24,26 @@ const METHOD_ICON: Record<string, any> = { cash: Banknote, transfer: Landmark, p
 let lineKey = 1
 const r2 = (n: number): number => Math.round(n * 100) / 100
 
-export default function Pos() {
+/** A receipt-shaped object built from pos.preview, for the confirmation step before anything is saved. */
+export function draftReceipt(preview: any, who: { customer?: any; pet?: any; by: string; note?: string }): any {
+  return {
+    invoice_no: '(ออกเลขเมื่อยืนยัน)',
+    issued_at: `${todayStr()} ${new Date().toTimeString().slice(0, 5)}`,
+    status: 'preview',
+    customer_name: who.customer?.name,
+    customer_code: who.customer?.code,
+    customer_phone: who.customer?.phone,
+    pet_name: who.pet?.name,
+    pet_species: who.pet?.species,
+    created_by_name: who.by,
+    note: who.note,
+    ...preview,
+    items: preview.lines.map((l: any) => ({ ...l, id: l.seq }))
+  }
+}
+
+/** shop = ขายหน้าร้าน (walk-in sale, starts at the product list); otherwise คิดเงิน for a customer. */
+export default function Pos({ shop = false }: { shop?: boolean }) {
   const nav = useNavigate()
   const [params] = useSearchParams()
   const { me, shift, refreshShift } = useSession()
@@ -62,7 +82,11 @@ export default function Pos() {
         setPetId(params.get('pet') ?? (c.pets.length === 1 ? c.pets[0].id : ''))
         setStep(2)
       })
-  }, [params])
+    else if (shop) {
+      setWalkIn(true)
+      setStep(2)
+    }
+  }, [params, shop])
 
   const afterLines = lines.reduce((t, l) => t + l.qty * l.unit_price - l.discount, 0)
   const billDiscountBaht = r2(discountPct ? (afterLines * (Number(billDiscount) || 0)) / 100 : Number(billDiscount) || 0)
@@ -95,8 +119,9 @@ export default function Pos() {
     setCustomer(null)
     setWalkIn(false)
     setPetId('')
-    setStep(1)
-    nav('/pos', { replace: true })
+    setStep(shop ? 2 : 1)
+    if (shop) setWalkIn(true)
+    nav(shop ? '/shop' : '/pos', { replace: true })
   }
 
   const shown = (products ?? []).filter(
@@ -106,7 +131,7 @@ export default function Pos() {
   const missingVet = lines.some((l) => l.product.needs_vet && !l.vet_id)
   const who = customer ? customer.name : walkIn ? 'ลูกค้าทั่วไป' : null
 
-  const checkout = async (payments: { method: string; amount: number }[], approval?: any): Promise<any> => {
+  const checkout = async (payments: { method: string; amount: number }[], approval: any, print: boolean): Promise<any> => {
     const res = await api<any>('pos.checkout', {
       customer_id: customer?.id,
       pet_id: petId || undefined,
@@ -119,10 +144,12 @@ export default function Pos() {
       approval
     })
     refreshShift()
-    openPrint(`/print/invoice/${res.id}`)
-    if (lines.some((l) => l.product.category === 'medicine')) openPrint(`/print/labels/${res.id}`)
     reset()
-    if (queueId) nav('/')
+    if (queueId) nav('/billing')
+    if (print) {
+      if (lines.some((l) => l.product.category === 'medicine')) openPrint(`/print/labels/${res.id}`)
+      openPrint(`/print/invoice/${res.id}`)
+    }
     return res
   }
 
@@ -130,8 +157,16 @@ export default function Pos() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>ขาย / คิดเงิน</h1>
-          <div className="lead">{who ? <>บิลของ <b>{who}</b>{pet && ` · ${pet.name}`}</> : 'เริ่มจากเลือกลูกค้า หรือกด "ลูกค้าทั่วไป" ถ้าแค่ซื้อของ'}</div>
+          <h1 className="title-ico">
+            <span className={`gem ${shop ? 'amber' : 'emerald'}`}>{shop ? <ShoppingBag /> : <HandCoins />}</span>
+            {shop ? 'ขายหน้าร้าน' : 'คิดเงิน'}
+          </h1>
+          <div className="lead">
+            {who ? <>บิลของ <b>{who}</b>{pet && ` · ${pet.name}`}</> : shop ? 'กดเลือกสินค้าได้เลย ถ้าเป็นสมาชิกกด "เลือกลูกค้า" เพื่อเก็บประวัติ' : 'เลือกลูกค้าที่รอชำระเงิน หรือค้นหาชื่อลูกค้า'}
+            {shop && step === 2 && (
+              <button className="ghost" onClick={() => setStep(1)}><User /> {customer ? 'เปลี่ยนลูกค้า' : 'เลือกลูกค้า'}</button>
+            )}
+          </div>
         </div>
         {(lines.length > 0 || who) && <button className="secondary" onClick={reset}><Trash2 /> เริ่มบิลใหม่</button>}
       </div>
@@ -162,7 +197,7 @@ export default function Pos() {
         ))}
       </div>
 
-      {step === 1 && <WaitingToPay />}
+      {step === 1 && !shop && <WaitingToPay />}
       {step === 1 && (
         <StepCustomer
           customer={customer}
@@ -222,7 +257,8 @@ export default function Pos() {
               discountPct={preview?.discount_pct ?? 0}
               canPay={!!shift}
               onBack={() => setStep(2)}
-              onSubmit={(pays, approval) => act(() => checkout(pays, approval), 'บันทึกบิลแล้ว — กำลังเปิดใบเสร็จ')}
+              receipt={preview && draftReceipt(preview, { customer, pet, by: me.display_name, note })}
+              onSubmit={(pays, approval, print) => act(() => checkout(pays, approval, print), print ? 'บันทึกบิลแล้ว — กำลังเปิดใบเสร็จ' : 'บันทึกบิลแล้ว')}
             />
           )}
 
@@ -428,7 +464,9 @@ export function StepPay(props: {
   discountPct: number
   canPay: boolean
   onBack: () => void
-  onSubmit: (payments: { method: string; amount: number }[], approval?: any) => Promise<any>
+  /** Bill details for the receipt preview shown before the payment is saved. */
+  receipt?: any
+  onSubmit: (payments: { method: string; amount: number }[], approval: any, print: boolean) => Promise<any>
 }) {
   const depositBal = props.customer?.deposit_balance ?? 0
   const methods = ['cash', 'transfer', 'promptpay', 'card', ...(depositBal > 0 ? ['deposit'] : [])]
@@ -439,6 +477,11 @@ export function StepPay(props: {
   const [askApproval, setAskApproval] = useState(false)
   const [busy, setBusy] = useState(false)
   const [split, setSplit] = useState(false)
+  const [confirming, setConfirming] = useState<{ approval?: any } | null>(null)
+  const [shop, setShop] = useState<any>(null)
+  useEffect(() => {
+    api('settings.get').then(setShop)
+  }, [])
 
   const num = (m: string): number => Number(amounts[m]) || 0
   const used = Object.keys(amounts)
@@ -465,12 +508,18 @@ export function StepPay(props: {
   }, [amounts.promptpay])
 
   const ok = props.canPay && remaining >= 0 && (remaining === 0 || (allowUnpaid && !!props.customer))
-  const submit = async (approval?: any): Promise<void> => {
+  const payments = used.map((m) => ({ method: m, amount: num(m) })).filter((p) => p.amount > 0)
+  // Every payment goes through the receipt preview first; the bill is saved only on "ยืนยันรับเงิน".
+  const submit = (approval?: any): void => {
     if (props.needsApproval && !approval) return setAskApproval(true)
+    setAskApproval(false)
+    setConfirming({ approval })
+  }
+  const save = async (print: boolean): Promise<void> => {
     setBusy(true)
-    const res = await props.onSubmit(used.map((m) => ({ method: m, amount: num(m) })).filter((p) => p.amount > 0), approval)
+    const res = await props.onSubmit(payments, confirming?.approval, print)
     setBusy(false)
-    if (!res) setAskApproval(false)
+    if (res) setConfirming(null)
   }
 
   return (
@@ -551,8 +600,45 @@ export function StepPay(props: {
         ))}
       {!props.canPay && <div className="alert">ต้องเปิดกะก่อนรับเงิน</div>}
       <button className="big block ok" disabled={!ok || busy} onClick={() => submit()}>
-        <Check /> ยืนยันรับเงิน และพิมพ์ใบเสร็จ
+        <ReceiptText /> ดูตัวอย่างใบเสร็จ แล้วยืนยันรับเงิน
       </button>
+      {confirming && (
+        <Modal
+          wide
+          title="ตรวจใบเสร็จก่อนยืนยันรับเงิน"
+          onClose={() => setConfirming(null)}
+          footer={
+            <>
+              <button className="secondary" onClick={() => setConfirming(null)}><ArrowLeft /> กลับไปแก้ไข</button>
+              <div className="grow" />
+              <button className="secondary" disabled={busy} onClick={() => save(false)}><Check /> ยืนยัน (ไม่พิมพ์)</button>
+              <button className="big ok" disabled={busy} onClick={() => save(true)}><Printer /> ยืนยันรับเงิน + พิมพ์</button>
+            </>
+          }
+        >
+          <div className="confirm-sum">
+            <div><span>ยอดสุทธิ</span><b>{money(props.total)}</b></div>
+            {payments.map((p) => (
+              <div key={p.method}><span>{METHOD_LABEL[p.method]}</span><b>{money(p.amount)}</b></div>
+            ))}
+            {change > 0 && <div className="ok"><span>เงินทอน</span><b>{money(change)}</b></div>}
+            {remaining > 0 && <div className="bad"><span>ค้างชำระ</span><b>{money(remaining)}</b></div>}
+          </div>
+          {props.receipt && shop && (
+            <div className="receipt-preview">
+              <Receipt
+                s={shop}
+                inv={{
+                  ...props.receipt,
+                  preview: true,
+                  paid_amount: r2(props.total - Math.max(remaining, 0)),
+                  payments: payments.map((p, i) => ({ id: i, kind: 'payment', ...p }))
+                }}
+              />
+            </div>
+          )}
+        </Modal>
+      )}
       {askApproval && (
         <ApprovalModal title="ขออนุมัติส่วนลด" reason={`ส่วนลดรวม ${props.discountPct}% เกินสิทธิ์ของคุณ`} onClose={() => setAskApproval(false)} onApprove={(a) => submit(a)} />
       )}

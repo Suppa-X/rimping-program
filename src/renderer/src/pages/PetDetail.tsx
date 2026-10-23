@@ -26,7 +26,7 @@ export default function PetDetail() {
   const goBill = (visitId?: string, vetId?: string): void =>
     void nav(`/pos?customer=${p.customer_id}&pet=${p.id}${visitId ? `&visit=${visitId}` : ''}${vetId ? `&vet=${vetId}` : ''}${queueId ? `&queue=${queueId}` : ''}`)
   const enqueue = async (): Promise<void> => {
-    if (await act(() => api('queue.add', { pet_id: p.id, reason: 'ตรวจรักษา' }), `${p.name} เข้าคิวแล้ว`)) nav('/')
+    if (await act(() => api('queue.add', { pet_id: p.id, reason: 'ตรวจรักษา' }), `${p.name} เข้าคิวแล้ว`)) nav('/exam')
   }
   const due = p.vaccinations.filter((x: any) => !x.done_followup && x.next_due_date)
 

@@ -487,7 +487,7 @@ export const salesApi = {
     const u = requireUser()
     return {
       ...b,
-      lines: b.lines.map(({ product, ...l }: any) => ({ ...l, category: product.category })),
+      lines: b.lines.map(({ product, ...l }: any) => ({ ...l, category: product.category, unit: product.unit })),
       needs_approval: u.role !== 'owner' && b.discount_pct > u.max_discount_pct + 0.001
     }
   },

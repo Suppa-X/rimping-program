@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, Wallet, Receipt, Search, AlertTriangle, BedDouble, Stethoscope, X } from 'lucide-react'
 import { api, money, thDate, todayStr, openPrint, CATEGORY_LABEL, METHOD_LABEL } from '../api'
 import { useApi, useAction, useSession, Modal, Field, Empty, SpeciesIcon } from '../ui'
-import { StepPay } from './Pos'
+import { StepPay, draftReceipt } from './Pos'
 
 export default function AdmissionDetail() {
   const { id } = useParams()
@@ -201,11 +201,16 @@ export default function AdmissionDetail() {
             discountPct={preview.discount_pct}
             canPay={!!shift}
             onBack={() => setPaying(false)}
-            onSubmit={(payments, approval) =>
+            receipt={draftReceipt(preview, {
+              customer: { name: ad.owner_name, phone: ad.phone },
+              pet: { name: ad.pet_name, species: ad.species },
+              by: me.display_name
+            })}
+            onSubmit={(payments, approval, print) =>
               act(async () => {
                 const res = await api<any>('admissions.checkout', { id: ad.id, bill_discount: Number(billDiscount) || 0, payments, approval })
                 refreshShift()
-                openPrint(`/print/invoice/${res.id}`)
+                if (print) openPrint(`/print/invoice/${res.id}`)
                 setPaying(false)
                 reload()
                 return res

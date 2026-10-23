@@ -27,7 +27,7 @@ export default function Vaccines({ embedded }: { embedded?: boolean }) {
     toast('คัดลอกข้อความแล้ว — วางใน LINE ได้เลย')
   }
   const enqueue = async (r: any): Promise<void> => {
-    if (await act(() => api('queue.add', { pet_id: r.pet_id, reason: `ฉีด${r.name}` }), `${r.pet_name} เข้าคิวแล้ว`)) nav('/')
+    if (await act(() => api('queue.add', { pet_id: r.pet_id, reason: `ฉีด${r.name}` }), `${r.pet_name} เข้าคิวแล้ว`)) nav('/exam')
   }
 
   return (

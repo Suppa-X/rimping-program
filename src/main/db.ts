@@ -450,6 +450,10 @@ const MIGRATIONS: string[] = [
     updated_at  TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
   CREATE INDEX idx_appt_date ON appointments(appt_date, status);
+  `,
+  // Link a queue entry to the appointment it came from (blank = walk-in)
+  `
+  ALTER TABLE queue ADD COLUMN appointment_id TEXT REFERENCES appointments(id);
   `
 ]
 

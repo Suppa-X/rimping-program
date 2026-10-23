@@ -18,7 +18,7 @@ export default function CustomerDetail() {
   if (!c) return null
 
   const enqueue = async (p: any): Promise<void> => {
-    if (await act(() => api('queue.add', { pet_id: p.id, reason: 'ตรวจรักษา' }), `${p.name} เข้าคิวแล้ว`)) nav('/')
+    if (await act(() => api('queue.add', { pet_id: p.id, reason: 'ตรวจรักษา' }), `${p.name} เข้าคิวแล้ว`)) nav('/exam')
   }
 
   return (
