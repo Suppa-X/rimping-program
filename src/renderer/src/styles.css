@@ -535,10 +535,9 @@ tr.void td { color: #9aa8b5; text-decoration: line-through; }
 .guide-body ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }
 
 /* ---------- responsive for the new shell ---------- */
-@media (max-width: 1350px) {
+@media (min-width: 1101px) and (max-width: 1350px) {
   .quick > span:not(.gem):not(.nav-badge) { display: none; }
   .quick { padding: 4px; }
-  .pill-text { display: none; }
 }
 @media (max-width: 1100px) {
   .sidebar { position: fixed; inset: 0 auto 0 0; z-index: 60; transform: translateX(-100%); transition: transform 0.2s; box-shadow: 10px 0 30px rgba(0, 0, 0, 0.3); }
@@ -718,5 +717,106 @@ tr.clickable:hover td { background: var(--clinic-soft); }
 .backbtn .gem { width: 78px; height: 78px; border-radius: 24px; background: #64748b; }
 .backbtn .gem svg { width: 44px; height: 44px; }
 .backbtn:hover { background: var(--clinic-soft); filter: none; }
-@media (max-width: 1350px) { .backbtn .gem { width: 64px; height: 64px; } .backbtn .gem svg { width: 36px; height: 36px; } .backbtn > span:last-child { display: none; } }
+@media (min-width: 1101px) and (max-width: 1350px) { .backbtn .gem { width: 64px; height: 64px; } .backbtn .gem svg { width: 36px; height: 36px; } .backbtn > span:last-child { display: none; } }
 @media (max-width: 640px) { .backbtn .gem { width: 52px; height: 52px; border-radius: 16px; } .backbtn .gem svg { width: 30px; height: 30px; } .backbtn { padding: 4px; } }
+
+/* ---------- iPad and phone ---------- */
+.shell { height: 100vh; height: 100dvh; }
+button, a, .cal-cell, .tl-chip { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+.table-wrap table { min-width: max-content; width: 100%; }
+.content { -webkit-overflow-scrolling: touch; }
+
+/* daily steps: top bar on wide screens, home page otherwise */
+.top-steps { display: none; }
+@media (min-width: 1600px) {
+  .top-steps { display: flex; flex-wrap: nowrap; gap: 6px; margin: 0 0 0 8px; min-width: 0; }
+  .top-steps .daystep { flex: 0 1 auto; font-size: 13.5px; padding: 5px 10px 5px 5px; }
+  .top-steps .daystep .n { width: 30px; height: 30px; font-size: 13px; }
+  .home-steps { display: none; }
+}
+
+/* daily bill summary */
+.daybar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.daybar input { width: 180px; }
+.daybar b { font-size: 18px; color: var(--brand); }
+.sumlist { display: flex; flex-direction: column; }
+.sumlist > div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 2px; border-bottom: 1px solid #e6eeee; }
+.sumlist > div b { font-variant-numeric: tabular-nums; }
+.sumlist .bad b { color: var(--bad); }
+.sumlist .total { border-bottom: 0; border-top: 2px solid var(--clinic); margin-top: 4px; font-weight: 600; }
+.sumlist .total b { color: var(--clinic); font-size: 20px; }
+
+/* sticky cart summary on the shop page when the cart is below the products */
+.cartbar { display: none; }
+@media (max-width: 1200px) {
+  .cartbar {
+    display: flex; align-items: center; gap: 10px; position: fixed; left: 312px; right: 12px; bottom: 12px; z-index: 40;
+    background: #fff; border: 2px solid var(--clinic); border-radius: 16px; padding: 10px 12px;
+  }
+  .cartbar b { margin-left: auto; font-size: 22px; color: var(--brand); }
+  .page:has(.cartbar) { padding-bottom: 110px; }
+}
+@media (max-width: 1100px) { .cartbar { left: 12px; } }
+
+/* iPad portrait / small laptop: sidebar becomes a drawer, top icons keep their labels */
+@media (max-width: 1100px) {
+  .topbar { flex-wrap: nowrap; }
+  .page { padding: 18px 18px 40px; }
+}
+
+/* phone: main jobs move to a bottom tab bar within thumb reach */
+@media (max-width: 640px) {
+  .quickbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: #fff; border-top: 1.5px solid #cfe6e1;
+    justify-content: space-around; gap: 0; padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 0px)); overflow: visible;
+  }
+  .quick { flex: 1 1 0; padding: 4px 0; font-size: 11.5px; border-radius: 12px; gap: 2px; }
+  .quick > span:not(.gem):not(.nav-badge) { display: block; }
+  .quick .gem { width: 42px; height: 42px; border-radius: 13px; }
+  .quick .gem svg { width: 24px; height: 24px; }
+  .quick .nav-badge { right: 10%; top: 0; font-size: 11px; padding: 0 6px; }
+  .content { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .cartbar { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 8px; right: 8px; padding: 8px; gap: 6px; }
+  .cartbar > button:first-child { padding: 8px; font-size: 13px; }
+  .cartbar b { font-size: 18px; }
+  .page:has(.cartbar) { padding-bottom: 90px; }
+  .topbar { padding: 6px 10px; padding-top: max(6px, env(safe-area-inset-top, 0px)); }
+  .backbtn > span:last-child { display: none; }
+  .backbtn .gem { width: 46px; height: 46px; border-radius: 14px; }
+  .backbtn .gem svg { width: 26px; height: 26px; }
+  .burger svg { width: 30px; height: 30px; }
+  .page { padding: 14px 12px 24px; }
+  .steps { flex-direction: row; gap: 6px; }
+  .step { padding: 8px; gap: 6px; flex-direction: column; text-align: center; }
+  .step .small { display: none; }
+  .pos .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .pos .chip { flex: 0 0 auto; }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chart { gap: 4px; }
+  .chart .val { font-size: 10px; }
+  .chart .lbl { font-size: 11px; }
+  .daybar input { width: 150px; }
+  .hero-kpis { gap: 8px; }
+  .kpi b { font-size: 24px; }
+  .result { flex-wrap: wrap; }
+  .result .stack { flex-direction: row; flex-wrap: wrap; width: 100%; }
+  input, select, textarea { font-size: 16px; }
+  .toasts { left: 12px; right: 12px; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+}
+.chart .col { min-width: 0; }
+.chart .val { max-width: 100%; overflow: hidden; text-overflow: clip; }
+@media (max-width: 1350px) and (min-width: 641px) {
+  .backbtn .gem { width: 64px; height: 64px; }
+  .backbtn .gem svg { width: 36px; height: 36px; }
+}
+@media (max-width: 640px) {
+  .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g4 > .stat { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .stat .ico { width: 48px; height: 48px; border-radius: 15px; }
+  .stat .ico svg { width: 26px; height: 26px; }
+  .stat .value { font-size: 20px; }
+  .appt-row, .day-row { flex-wrap: wrap; }
+  .appt-row > button, .day-row > button { flex: 1 0 100%; }
+  .page-head > button.big { font-size: 16px; padding: 10px 14px; }
+}

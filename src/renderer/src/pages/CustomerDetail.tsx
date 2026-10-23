@@ -101,7 +101,7 @@ export default function CustomerDetail() {
           {c.invoices.length === 0 ? (
             <Empty icon={<Receipt />} text="ยังไม่มีบิล" />
           ) : (
-            <table>
+            <div className="table-wrap"><table>
               <thead>
                 <tr><th>เลขที่</th><th>วันที่</th><th>สัตว์</th><th className="num">ยอด</th><th className="num">ค้าง</th><th>สถานะ</th></tr>
               </thead>
@@ -117,7 +117,7 @@ export default function CustomerDetail() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
@@ -145,7 +145,7 @@ function DepositTab({ c, onAdd, onRefund }: { c: any; onAdd: () => void; onRefun
       {!rows?.length ? (
         <Empty icon={<Wallet />} text="ยังไม่มีรายการมัดจำ — ใช้รับเงินล่วงหน้า เช่น ค่าผ่าตัด แล้วหักตอนคิดเงิน" />
       ) : (
-        <table>
+        <div className="table-wrap"><table>
           <tbody>
             {rows.map((r) => {
               const plus = r.kind === 'deposit' || (r.kind === 'refund' && r.method === 'deposit')
@@ -159,7 +159,7 @@ function DepositTab({ c, onAdd, onRefund }: { c: any; onAdd: () => void; onRefun
               )
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   )

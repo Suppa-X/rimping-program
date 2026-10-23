@@ -46,14 +46,6 @@ export default function Home() {
   const max7 = Math.max(1, ...(d?.last7 ?? []).map((x: any) => x.total))
   const pending = (appts ?? []).filter((a) => a.status === 'pending')
   const hour = new Date().getHours()
-  const steps = [
-    { n: 1, label: 'เปิดกะ', done: !!shift, to: '/finance/shift', tone: 'gold' },
-    { n: 2, label: 'รับลูกค้าเข้าคิว', done: (queue ?? []).length > 0, to: '/', tone: 'sky' },
-    { n: 3, label: 'ตรวจรักษา', done: false, to: '/exam', tone: 'violet' },
-    { n: 4, label: 'คิดเงิน + ใบเสร็จ', done: false, to: '/billing', tone: 'emerald' },
-    { n: 5, label: 'ปิดกะ นับเงิน', done: false, to: '/finance/shift', tone: 'coral' }
-  ]
-
   return (
     <>
       <div className="hero">
@@ -76,13 +68,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="daysteps">
-        {steps.map((s) => (
-          <button key={s.n} className={`daystep ${s.tone} ${s.done ? 'done' : ''}`} onClick={() => nav(s.to)}>
-            <span className="n">{s.done ? <CheckCircle2 size={18} /> : s.n}</span> {s.label}
-          </button>
-        ))}
-      </div>
+      <DaySteps className="daysteps home-steps" shift={shift} queued={(queue ?? []).length} />
 
       <div className="arrive">
         <div className="card tinted sky">
@@ -219,6 +205,27 @@ export default function Home() {
         />
       )}
     </>
+  )
+}
+
+/** The day's routine as tappable steps; shown in the top bar on wide screens, on the home page otherwise. */
+export function DaySteps({ className, shift, queued }: { className: string; shift: any; queued: number }) {
+  const nav = useNavigate()
+  const steps = [
+    { n: 1, label: 'เปิดกะ', done: !!shift, to: '/finance/shift', tone: 'gold' },
+    { n: 2, label: 'รับลูกค้าเข้าคิว', done: queued > 0, to: '/', tone: 'sky' },
+    { n: 3, label: 'ตรวจรักษา', done: false, to: '/exam', tone: 'violet' },
+    { n: 4, label: 'คิดเงิน + ใบเสร็จ', done: false, to: '/billing', tone: 'emerald' },
+    { n: 5, label: 'ปิดกะ นับเงิน', done: false, to: '/finance/shift', tone: 'coral' }
+  ]
+  return (
+    <div className={className}>
+      {steps.map((s) => (
+        <button key={s.n} className={`daystep ${s.tone} ${s.done ? 'done' : ''}`} onClick={() => nav(s.to)}>
+          <span className="n">{s.done ? <CheckCircle2 size={18} /> : s.n}</span> {s.label}
+        </button>
+      ))}
+    </div>
   )
 }
 

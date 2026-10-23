@@ -139,7 +139,7 @@ export default function PetDetail() {
           {p.vaccinations.length === 0 ? (
             <Empty icon={<Syringe />} text="ยังไม่มีประวัติวัคซีน — ขายวัคซีนในหน้าคิดเงินแล้วระบบจะบันทึกให้อัตโนมัติ" />
           ) : (
-            <table>
+            <div className="table-wrap"><table>
               <thead>
                 <tr><th>วันที่ให้</th><th>วัคซีน/ยา</th><th>Lot</th><th>แพทย์</th><th>นัดครั้งถัดไป</th><th></th></tr>
               </thead>
@@ -167,7 +167,7 @@ export default function PetDetail() {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}
@@ -177,7 +177,7 @@ export default function PetDetail() {
           {p.invoices.length === 0 ? (
             <Empty icon={<Receipt />} text="ยังไม่มีบิล" />
           ) : (
-            <table>
+            <div className="table-wrap"><table>
               <thead><tr><th>เลขที่</th><th>วันที่</th><th className="num">ยอด</th><th>สถานะ</th></tr></thead>
               <tbody>
                 {p.invoices.map((i: any) => (
@@ -189,7 +189,7 @@ export default function PetDetail() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}

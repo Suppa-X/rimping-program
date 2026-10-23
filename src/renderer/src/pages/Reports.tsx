@@ -50,7 +50,7 @@ export default function Reports() {
               {r.by_category.length === 0 ? (
                 <Empty text="ไม่มีข้อมูล" />
               ) : (
-                <table>
+                <div className="table-wrap"><table>
                   <thead>
                     <tr>
                       <th>หมวด</th>
@@ -69,12 +69,12 @@ export default function Reports() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
             <div className="card">
               <h2 style={{ marginBottom: 10 }}>รับเงินแยกช่องทาง</h2>
-              <table>
+              <div className="table-wrap"><table>
                 <tbody>
                   {r.by_method.filter((m: any) => m.method !== 'deposit').map((m: any) => (
                     <tr key={m.method}>
@@ -83,12 +83,12 @@ export default function Reports() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <h2 style={{ margin: '16px 0 10px' }}>ค่าบริการแยกตามสัตวแพทย์ (สำหรับ DF)</h2>
               {r.by_vet.length === 0 ? (
                 <Empty text="ไม่มีข้อมูล" />
               ) : (
-                <table>
+                <div className="table-wrap"><table>
                   <thead>
                     <tr>
                       <th>สัตวแพทย์</th>
@@ -105,7 +105,7 @@ export default function Reports() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
               <div className="muted small" style={{ marginTop: 6 }}>อัตรา DF จะเพิ่มในเฟส 2 หลังสรุปกับร้าน</div>
             </div>
@@ -117,7 +117,7 @@ export default function Reports() {
               {r.by_day.length === 0 ? (
                 <Empty text="ไม่มีข้อมูล" />
               ) : (
-                <table>
+                <div className="table-wrap"><table>
                   <tbody>
                     {r.by_day.map((d: any) => (
                       <tr key={d.day}>
@@ -128,7 +128,7 @@ export default function Reports() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
             <div className="card">
@@ -136,7 +136,7 @@ export default function Reports() {
               {r.top_items.length === 0 ? (
                 <Empty text="ไม่มีข้อมูล" />
               ) : (
-                <table>
+                <div className="table-wrap"><table>
                   <thead>
                     <tr>
                       <th>รายการ</th>
@@ -155,7 +155,7 @@ export default function Reports() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
           </div>

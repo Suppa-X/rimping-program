@@ -209,6 +209,15 @@ export default function Pos({ shop = false }: { shop?: boolean }) {
         />
       )}
 
+      {step === 2 && lines.length > 0 && (
+        <div className="cartbar">
+          <button className="secondary" onClick={() => document.querySelector('.cart')?.scrollIntoView({ behavior: 'smooth' })}>
+            <ReceiptText /> ในบิล {lines.length} รายการ
+          </button>
+          <b className="head-font">{money(preview?.total ?? 0)}</b>
+          <button className="ok" disabled={!preview || missingVet} onClick={() => setStep(3)}>ถัดไป: รับเงิน <ArrowRight /></button>
+        </div>
+      )}
       {step >= 2 && (
         <div className="pos">
           {step === 2 ? (

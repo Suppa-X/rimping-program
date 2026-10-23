@@ -217,6 +217,60 @@ export const reportsApi = {
     }
   },
 
+  /** สรุปบิลประจำวัน: every bill of one day with totals by payment method, for the end-of-day check. */
+  'reports.daily': (a: { date: string }) => {
+    requirePerm('finance')
+    const d = a.date
+    const summary = one<any>(
+      `SELECT COUNT(*) AS bills, COALESCE(SUM(subtotal),0) AS gross,
+              COALESCE(SUM(line_discount + bill_discount),0) AS discount, COALESCE(SUM(vat_amount),0) AS vat,
+              COALESCE(SUM(total),0) AS total, COALESCE(SUM(total - paid_amount),0) AS unpaid
+       FROM invoices WHERE date(issued_at) = ? AND status <> 'void'`,
+      d
+    )
+    const voids = one<any>("SELECT COUNT(*) AS n, COALESCE(SUM(total),0) AS total FROM invoices WHERE date(issued_at) = ? AND status = 'void'", d)
+    const methods = all<any>(
+      `SELECT method, kind, COUNT(*) AS n, SUM(amount) AS amount FROM payments WHERE date(paid_at) = ?
+       GROUP BY method, kind ORDER BY kind, method`,
+      d
+    )
+    const bills = all<any>(
+      `SELECT i.id, i.invoice_no, i.issued_at, i.status, i.total, i.paid_amount, c.name AS customer_name, p.name AS pet_name,
+              u.display_name AS created_by_name,
+              (SELECT GROUP_CONCAT(DISTINCT pm.method) FROM payments pm WHERE pm.invoice_id = i.id AND pm.kind = 'payment') AS methods
+       FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id LEFT JOIN pets p ON p.id = i.pet_id
+       LEFT JOIN users u ON u.id = i.created_by
+       WHERE date(i.issued_at) = ? ORDER BY i.issued_at`,
+      d
+    )
+    const byCategory = all<any>(
+      `SELECT it.category, SUM(it.qty) AS qty, SUM(${NET_LINE}) AS net
+       FROM invoice_items it JOIN invoices i ON i.id = it.invoice_id
+       WHERE date(i.issued_at) = ? AND i.status <> 'void' GROUP BY it.category ORDER BY net DESC`,
+      d
+    ).map((r) => ({ ...r, label: CATEGORY_LABEL[r.category] ?? r.category, net: r2(r.net) }))
+    const sum = (kind: string, method?: string): number =>
+      r2(methods.filter((m) => m.kind === kind && (!method || m.method === method)).reduce((t, m) => t + m.amount, 0))
+    return {
+      date: d,
+      bills: summary.bills,
+      gross: r2(summary.gross),
+      discount: r2(summary.discount),
+      vat: r2(summary.vat),
+      total: r2(summary.total),
+      unpaid: r2(summary.unpaid),
+      void_count: voids.n,
+      void_total: r2(voids.total),
+      received: Object.fromEntries(['cash', 'transfer', 'promptpay', 'card', 'deposit'].map((m) => [m, sum('payment', m)])),
+      received_total: r2(sum('payment') - sum('payment', 'deposit')),
+      refunds: sum('refund'),
+      deposits_in: sum('deposit'),
+      cash_in_drawer: r2(sum('payment', 'cash') + methods.filter((m) => m.kind === 'deposit' && m.method === 'cash').reduce((t, m) => t + m.amount, 0) - methods.filter((m) => m.kind === 'refund' && m.method === 'cash').reduce((t, m) => t + m.amount, 0)),
+      by_category: byCategory,
+      list: bills.map((b) => ({ ...b, methods: b.methods ? b.methods.split(',') : [] }))
+    }
+  },
+
   'reports.sales': (a: { from: string; to: string }) => {
     requirePerm('reports')
     const range = [a.from, a.to]

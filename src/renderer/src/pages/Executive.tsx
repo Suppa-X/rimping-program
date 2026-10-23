@@ -160,7 +160,7 @@ export default function Executive() {
           <div className="grid g2" style={{ marginTop: 16 }}>
             <div className="card">
               <h2 style={{ marginBottom: 10 }}>รายได้แยกหมวด</h2>
-              <table>
+              <div className="table-wrap"><table>
                 <tbody>
                   {d.categories.map((c: any) => (
                     <tr key={c.category}>
@@ -171,23 +171,23 @@ export default function Executive() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
             <div className="card">
               <h2 style={{ marginBottom: 10 }}>ลูกค้าที่ใช้จ่ายสูงสุด</h2>
-              <table>
+              <div className="table-wrap"><table>
                 <tbody>
                   {d.top_customers.map((c: any, i: number) => (
                     <tr key={i}><td>{i + 1}. {c.name}</td><td className="num muted small">{c.bills} บิล</td><td className="num">{money(c.sales)}</td></tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
               <h2 style={{ margin: '16px 0 10px' }}>รับเงินแยกช่องทาง</h2>
-              <table>
+              <div className="table-wrap"><table>
                 <tbody>
                   {d.methods.map((m: any) => <tr key={m.method}><td>{METHOD_LABEL[m.method]}</td><td className="num">{money(m.amount)}</td></tr>)}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
         </>
@@ -209,14 +209,14 @@ export default function Executive() {
               line={d.trend.map((t: any) => ({ value: t.gross_profit }))}
             />
             {showTable && (
-              <table style={{ marginTop: 12 }}>
+              <div className="table-wrap"><table style={{ marginTop: 12 }}>
                 <thead><tr><th>เดือน</th><th className="num">ยอดขาย</th><th className="num">กำไรขั้นต้น</th><th className="num">บิล</th><th className="num">เฉลี่ย/บิล</th><th className="num">ลูกค้าใหม่</th><th className="num">ตรวจรักษา</th></tr></thead>
                 <tbody>
                   {d.trend.map((t: any) => (
                     <tr key={t.month}><td>{monthLabel(t.month, true)}</td><td className="num">{money(t.sales)}</td><td className="num">{money(t.gross_profit)}</td><td className="num">{t.bills}</td><td className="num">{money(t.avg_bill)}</td><td className="num">{t.new_customers}</td><td className="num">{t.visits}</td></tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
           <div className="grid g2" style={{ marginTop: 16 }}>

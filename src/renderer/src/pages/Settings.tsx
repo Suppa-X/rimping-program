@@ -129,7 +129,7 @@ function Users() {
         <h2 className="grow">ผู้ใช้งาน</h2>
         <button onClick={() => setEdit({ role: 'staff', max_discount_pct: 0, is_vet: false, active: true })}>➕ เพิ่มผู้ใช้</button>
       </div>
-      <table>
+      <div className="table-wrap"><table>
         <thead>
           <tr>
             <th>ชื่อ</th>
@@ -154,7 +154,7 @@ function Users() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       <div className="muted small" style={{ marginTop: 10 }}>
         สิทธิ์: <b>เจ้าของร้าน</b> ทำได้ทุกอย่าง · <b>ผู้จัดการ</b> ยกเลิกบิล/แก้สต็อก/ดูรายงาน · <b>สัตวแพทย์</b> บันทึกการรักษา/ดูรายงาน ·{' '}
         <b>พนักงาน</b> ขายและดูแลลูกค้า
@@ -235,7 +235,7 @@ function VaccineTypes() {
         <h2 className="grow">ชนิดวัคซีน/ยาป้องกัน และรอบนัด</h2>
         <button onClick={() => setEdit({ interval_days: 365 })}>➕ เพิ่ม</button>
       </div>
-      <table>
+      <div className="table-wrap"><table>
         <thead>
           <tr>
             <th>ชื่อ</th>
@@ -256,7 +256,7 @@ function VaccineTypes() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       {edit && (
         <Modal
           title={edit.id ? 'แก้ไขชนิดวัคซีน' : 'เพิ่มชนิดวัคซีน'}
@@ -334,7 +334,7 @@ function AuditLog() {
       {!rows?.length ? (
         <Empty text="ไม่มีรายการ" />
       ) : (
-        <table>
+        <div className="table-wrap"><table>
           <thead>
             <tr>
               <th>เวลา</th>
@@ -353,7 +353,7 @@ function AuditLog() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   )

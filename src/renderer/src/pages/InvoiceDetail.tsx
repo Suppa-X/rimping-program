@@ -38,7 +38,7 @@ export default function InvoiceDetail() {
 
       <div className="split">
         <div className="card">
-          <table>
+          <div className="table-wrap"><table>
             <thead>
               <tr>
                 <th>#</th>
@@ -65,7 +65,7 @@ export default function InvoiceDetail() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           <div className="totals" style={{ maxWidth: 340, marginLeft: 'auto', marginTop: 12 }}>
             <div><span>รวม</span><span className="num">{money(inv.subtotal)}</span></div>
             {inv.line_discount + inv.bill_discount > 0 && (
@@ -102,7 +102,7 @@ export default function InvoiceDetail() {
             {inv.payments.length === 0 ? (
               <div className="muted">ยังไม่มีการชำระ</div>
             ) : (
-              <table>
+              <div className="table-wrap"><table>
                 <tbody>
                   {inv.payments.map((p: any) => (
                     <tr key={p.id}>
@@ -117,7 +117,7 @@ export default function InvoiceDetail() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>

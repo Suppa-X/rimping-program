@@ -45,7 +45,7 @@ export default function Products() {
         {shown.length === 0 ? (
           <Empty text="ไม่พบรายการ" />
         ) : (
-          <table>
+          <div className="table-wrap"><table>
             <thead>
               <tr>
                 <th>รหัส</th>
@@ -90,7 +90,7 @@ export default function Products() {
                 )
               })}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
       {edit && <ProductForm initial={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); reload() }} />}
@@ -278,7 +278,7 @@ function HistoryModal(props: { p: any; onClose: () => void }) {
   const [rows] = useApi<any[]>('stock.moves', { product_id: props.p.id })
   return (
     <Modal wide title={`ความเคลื่อนไหว — ${props.p.name}`} onClose={props.onClose}>
-      <table>
+      <div className="table-wrap"><table>
         <thead>
           <tr>
             <th>วันเวลา</th>
@@ -304,7 +304,7 @@ function HistoryModal(props: { p: any; onClose: () => void }) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </Modal>
   )
 }

@@ -101,7 +101,7 @@ export default function AdmissionDetail() {
                   <b className="head-font">{thDate(day)}</b>
                   <span className="muted small">รวม {money(list.filter((c) => !c.voided).reduce((t, c) => t + c.qty * c.unit_price - c.discount, 0))}</span>
                 </div>
-                <table>
+                <div className="table-wrap"><table>
                   <tbody>
                     {list.map((c) => (
                       <tr key={c.id} className={c.voided ? 'void' : ''}>
@@ -125,7 +125,7 @@ export default function AdmissionDetail() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             ))
           )}

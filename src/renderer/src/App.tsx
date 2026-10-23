@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ArrowLeft, CalendarRange, FolderHeart, Stethoscope, HandCoins, ShoppingBag, CalendarCheck, BookOpen, Menu,
+  LayoutDashboard, ArrowLeft, CalendarRange, ClipboardList, FolderHeart, Stethoscope, HandCoins, ShoppingBag, CalendarCheck, BookOpen, Menu,
   Package, Wallet, Settings as SettingsIcon, LogOut, KeyRound, BedDouble, LineChart, ChevronDown, CircleAlert, Delete
 } from 'lucide-react'
 import logo from './assets/logo.png'
 import { api, ROLE_LABEL, todayStr, longDate } from './api'
 import { Me, SessionCtx, useAction, Field, initial } from './ui'
-import Home from './pages/Home'
+import Home, { DaySteps } from './pages/Home'
 import Customers from './pages/Customers'
 import CustomerDetail from './pages/CustomerDetail'
 import PetDetail from './pages/PetDetail'
@@ -27,6 +27,7 @@ import Calendar from './pages/Calendar'
 import Exam from './pages/Exam'
 import Billing from './pages/Billing'
 import Help from './pages/Help'
+import DailyBills, { PrintDaily } from './pages/DailyBills'
 
 export default function App() {
   const location = useLocation()
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/print/invoice/:id" element={<PrintInvoice />} />
         <Route path="/print/appointment/:id" element={<PrintAppointment />} />
         <Route path="/print/labels/:id" element={<PrintLabels />} />
+        <Route path="/print/daily/:date" element={<PrintDaily />} />
       </Routes>
     )
   }
@@ -104,7 +106,12 @@ function Shell() {
       title: 'ร้านและการเงิน',
       items: [
         { to: '/products', icon: Package, label: 'คลังสินค้า', sub: 'สต็อก · รับเข้า', tone: 'bronze', badge: counts.low_stock },
-        ...(can('finance') ? [{ to: '/finance', icon: Wallet, label: 'การเงิน', sub: 'บิล · กะ · รายงาน', tone: 'jade' }] : []),
+        ...(can('finance')
+          ? [
+              { to: '/daily', icon: ClipboardList, label: 'สรุปบิลประจำวัน', sub: 'บิลวันนี้ · ยอดแยกช่องทาง', tone: 'indigo' },
+              { to: '/finance', icon: Wallet, label: 'การเงิน', sub: 'บิล · กะ · รายงาน', tone: 'jade' }
+            ]
+          : []),
         ...(can('reports') && can('finance') ? [{ to: '/executive', icon: LineChart, label: 'สรุปผู้บริหาร', sub: 'ยอดขาย · แนวโน้ม', tone: 'gold' }] : [])
       ]
     },
@@ -163,6 +170,7 @@ function Shell() {
                 </NavLink>
               ))}
             </div>
+            <DaySteps className="daysteps top-steps" shift={shift} queued={counts.queue_waiting ?? 0} />
             <div className="grow" />
             {!shift && (
               <button className="pill off" onClick={() => nav('/finance/shift')}>
@@ -208,6 +216,7 @@ function Shell() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/executive" element={can('reports') && can('finance') ? <Executive /> : <NoAccess />} />
                 <Route path="/help" element={<Help />} />
+                <Route path="/daily" element={can('finance') ? <DailyBills /> : <NoAccess />} />
               </Routes>
             </div>
           </div>

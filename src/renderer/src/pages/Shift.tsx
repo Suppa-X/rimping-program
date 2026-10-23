@@ -73,7 +73,7 @@ export default function Shift() {
 
       <div className="card" style={{ marginTop: 16 }}>
         <h2 style={{ marginBottom: 10 }}>ประวัติกะ</h2>
-        <table>
+        <div className="table-wrap"><table>
           <thead>
             <tr>
               <th>เปิด</th>
@@ -102,7 +102,7 @@ export default function Shift() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {(closedSummary || view) && (

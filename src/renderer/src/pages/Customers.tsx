@@ -34,7 +34,7 @@ export default function Customers() {
         {rows.length === 0 ? (
           <Empty icon={<Users />} text={q ? `ไม่พบ "${q}"` : 'ยังไม่มีลูกค้า — กด "ลูกค้าใหม่" เพื่อเริ่ม'} />
         ) : (
-          <table>
+          <div className="table-wrap"><table>
             <thead>
               <tr>
                 <th style={{ width: 60 }}></th>
@@ -60,7 +60,7 @@ export default function Customers() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
       {creating && (

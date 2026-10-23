@@ -45,7 +45,7 @@ export default function Invoices({ preset }: { preset?: string }) {
         {rows.length === 0 ? (
           <Empty text="ไม่พบบิล" />
         ) : (
-          <table>
+          <div className="table-wrap"><table>
             <thead>
               <tr>
                 <th>เลขที่</th>
@@ -72,7 +72,7 @@ export default function Invoices({ preset }: { preset?: string }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </>
