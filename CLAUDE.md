@@ -23,6 +23,7 @@
 - โค้ดอยู่บน GitHub https://github.com/Suppa-X/rimping-program ซึ่ง**เป็น Public** (เจ้านายสั่งเมื่อ 21 ต.ค. 2569) **ห้าม commit ข้อมูลลูกค้าจริง ไฟล์ฐานข้อมูล หรือรหัสลับใด ๆ** เมื่อได้เวอร์ชันสมบูรณ์แล้วจึงสร้างไฟล์ติดตั้งด้วย `npm run dist`
 - หลังแก้ logic การเงิน ให้รัน `npm run typecheck` และ `npm run selftest`
 - ใช้ `npm run demo` (โปรแกรมบนเครื่อง) หรือ `npm run web` (เว็บ http://localhost:5180) เปิดโหมดทดลองที่มีข้อมูลตัวอย่าง โดยแยกข้อมูลไว้ ไม่ปนกับข้อมูลจริง
+- เว็บ Demo ออนไลน์: https://suppa-x.github.io/rimping-program/ (GitHub Pages จาก branch `gh-pages`) เมื่อแก้โปรแกรมแล้วให้ `npm run web:static` แล้ว commit ไฟล์ใน `out/web-static/` (พร้อม `.nojekyll`) ขึ้น `gh-pages` แทนของเดิม
 
 ## งานที่ค้างอยู่
 - Sync ขึ้น Supabase และเว็บดูข้อมูล Real Time (ต้องขออนุญาตเจ้านายก่อนสร้าง project)
