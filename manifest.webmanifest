@@ -1,0 +1,11 @@
+{
+  "name": "ริมปิงสัตวแพทย์",
+  "short_name": "ริมปิง",
+  "description": "โปรแกรมผู้ช่วยหน้าร้าน ริมปิงสัตวแพทย์ (Demo)",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f1f7f7",
+  "theme_color": "#0f8f86",
+  "icons": [{ "src": "icon.png", "sizes": "480x480", "type": "image/png", "purpose": "any" }]
+}
