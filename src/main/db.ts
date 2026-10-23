@@ -633,7 +633,7 @@ function seedDefaults(): void {
   const defaults: Record<string, string> = {
     shop_name: 'ริมปิงสัตวแพทย์',
     shop_name_en: 'Rimping Veterinary Clinic',
-    shop_address: '',
+    shop_address: 'เลขที่ 99 ถ.เทศา 1 ต.ในเมือง อ.เมืองกำแพงเพชร จ.กำแพงเพชร 62000',
     shop_phone: '',
     shop_tax_id: '',
     promptpay_id: '',

@@ -16,7 +16,7 @@ export async function seedDemo(call: Call, backupDir: string): Promise<void> {
   await call('users.save', { username: 'staff', display_name: 'พนักงานหน้าร้าน (ตัวอย่าง)', role: 'staff', pin: '3333', max_discount_pct: 5, is_vet: false })
   const me = { id: vetId }
   await call('settings.save', {
-    shop_address: '99 ถ.เจริญราษฎร์ ต.วัดเกต อ.เมือง จ.เชียงใหม่ 50000 (ตัวอย่าง)',
+    shop_address: 'เลขที่ 99 ถ.เทศา 1 ต.ในเมือง อ.เมืองกำแพงเพชร จ.กำแพงเพชร 62000',
     shop_phone: '053-000-000',
     promptpay_id: '0800000000',
     backup_dir: backupDir
