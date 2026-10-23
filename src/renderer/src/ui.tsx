@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from 'react'
-import { Cat, Dog, PawPrint, Inbox, X, Lightbulb } from 'lucide-react'
-import { api, STATUS_LABEL } from './api'
+import { Cat, Dog, PawPrint, Inbox, X, Lightbulb, CalendarX2 } from 'lucide-react'
+import { api, STATUS_LABEL, parseClosed, isClosed, openDay, longDate } from './api'
 
 /* ---------- session ---------- */
 
@@ -217,3 +217,29 @@ export function ApprovalModal(props: {
 
 /** First letter for an avatar, skipping the honorific "คุณ". */
 export const initial = (name: string): string => (name.replace(/^คุณs*/, "") || name).slice(0, 1)
+
+let closedCache: number[] | null = null
+
+/** Weekdays the shop is closed (0 = Sunday), from settings (re-read each time a screen opens). */
+export function useClosedDays(): number[] {
+  const [closed, setClosed] = useState<number[]>(closedCache ?? [])
+  useEffect(() => {
+    api<any>('settings.get').then((s) => {
+      closedCache = parseClosed(s.closed_weekdays)
+      setClosed(closedCache)
+    })
+  }, [])
+  return closed
+}
+
+/** Warning shown when a chosen date falls on the shop's day off, with a one-tap move to the next open day. */
+export function ClosedDayWarning({ date, closed, onMove }: { date?: string; closed: number[]; onMove: (d: string) => void }) {
+  if (!date || !isClosed(date, closed)) return null
+  const next = openDay(date, closed)
+  return (
+    <div className="alert warn">
+      <CalendarX2 size={18} /> {longDate(date)} ร้านหยุด
+      <button className="orange" style={{ marginLeft: 'auto' }} onClick={() => onMove(next)}>เลื่อนเป็น{longDate(next).split('ที่')[0]}ที่ {Number(next.slice(8))}</button>
+    </div>
+  )
+}

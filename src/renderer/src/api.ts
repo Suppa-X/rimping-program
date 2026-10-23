@@ -111,7 +111,7 @@ export function addMonths(date: string, months: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
-const TH_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"]
+export const TH_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"]
 const TH_MONTHS_FULL = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
 const EN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -125,3 +125,16 @@ export function longDate(date: string, lang: "th" | "en" = "th"): string {
 }
 
 export const APPT_TOPICS = ["นัดวัคซีน", "ตรวจติดตามอาการ", "ฉีดยาต่อเนื่อง", "ตัดไหม/ทำแผล", "ผ่าตัด", "ทำหมัน", "ขูดหินปูน", "ถ่ายพยาธิ/หยดเห็บหมัด", "ตรวจเลือด", "อาบน้ำตัดขน", "อื่น ๆ"]
+
+/* ---------- weekly closed days (setting "closed_weekdays", e.g. "2" = every Tuesday) ---------- */
+
+export const parseClosed = (v?: string | null): number[] => (v ?? "").split(",").filter((x) => x !== "").map(Number)
+
+export const isClosed = (date: string, closed: number[]): boolean => closed.includes(new Date(date + "T00:00:00").getDay())
+
+/** The same date, or the next day the shop is open. */
+export function openDay(date: string, closed: number[]): string {
+  let d = date
+  for (let i = 0; i < 7 && isClosed(d, closed); i++) d = addDays(d, 1)
+  return d
+}

@@ -1,7 +1,7 @@
 import { Settings as SettingsIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api, thDate, todayStr, monthStart, ROLE_LABEL } from '../api'
+import { api, thDate, todayStr, monthStart, ROLE_LABEL, TH_DAYS, parseClosed } from '../api'
 import { useApi, useAction, useSession, Modal, Field, Empty } from '../ui'
 
 export default function Settings() {
@@ -63,6 +63,19 @@ function ShopSettings() {
         </Field>
         <Field label="ข้อความท้ายใบเสร็จ">
           <input value={s.receipt_footer} onChange={(e) => set('receipt_footer', e.target.value)} />
+        </Field>
+        <Field label="วันหยุดประจำสัปดาห์ (ปฏิทินจะแสดงว่าร้านหยุด และเตือนเมื่อนัดลูกค้าตรงวันหยุด)">
+          <div className="chips">
+            {TH_DAYS.map((d, i) => {
+              const days = parseClosed(s.closed_weekdays)
+              const on = days.includes(i)
+              return (
+                <button key={d} className={`chip ${on ? 'active' : ''}`} onClick={() => set('closed_weekdays', (on ? days.filter((x) => x !== i) : [...days, i]).sort().join(','))}>
+                  {d}
+                </button>
+              )
+            })}
+          </div>
         </Field>
         <div className="row end">
           <button onClick={save}>บันทึก</button>

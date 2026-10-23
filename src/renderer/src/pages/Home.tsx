@@ -4,8 +4,8 @@ import {
   Search, UserPlus, ShoppingBag, Clock, Clock3, CreditCard, CheckCircle2, ListPlus, TrendingUp, Receipt, AlertTriangle,
   ChevronRight, Banknote, CalendarCheck, Footprints
 } from 'lucide-react'
-import { api, money, thDate, todayStr, longDate } from '../api'
-import { useApi, useAction, useSession, Modal, Field, SpeciesIcon, Empty, initial } from '../ui'
+import { api, money, thDate, todayStr, longDate, isClosed } from '../api'
+import { useApi, useAction, useSession, useClosedDays, Modal, Field, SpeciesIcon, Empty, initial } from '../ui'
 import { CustomerForm } from './forms'
 import { payUrl } from './Exam'
 
@@ -22,6 +22,7 @@ export default function Home() {
   const [appts, reloadAppts] = useApi<any[]>('appointments.list', { from: todayStr(), to: todayStr() })
   const [enqueue, setEnqueue] = useState<any | null>(null)
   const [creating, setCreating] = useState(false)
+  const closed = useClosedDays()
 
   const reloadAll = (): void => {
     reloadQueue()
@@ -59,6 +60,7 @@ export default function Home() {
           <div className="hero-date">{longDate(todayStr())}</div>
           <h1>สวัสดีครับ {me.display_name}</h1>
           <div className="hero-sub">ลูกค้ามาถึง → ค้นหาชื่อแล้วกด "เข้าคิว" · ลูกค้าที่มีนัด กด "มาถึงแล้ว"</div>
+          {isClosed(todayStr(), closed) && <div className="hero-off">วันนี้เป็นวันหยุดประจำสัปดาห์ของร้าน</div>}
         </div>
         <div className="hero-kpis">
           <button className="kpi t-orange" onClick={() => nav('/exam')}><Clock /><b>{d?.queue_to_exam ?? 0}</b><span>รอตรวจ</span></button>

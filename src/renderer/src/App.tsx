@@ -256,7 +256,7 @@ function Login({ onLogin }: { onLogin: (m: Me) => void }) {
         <h2 className="center">เลือกชื่อของคุณ แล้วกดรหัส PIN</h2>
         {demo && (
           <p className="muted center" style={{ margin: 0 }}>
-            โหมดทดลอง — PIN: เจ้าของร้าน 1111 · ผู้จัดการ 2222 · พนักงาน 3333
+            โหมดทดลอง — PIN: ประธานจันทนา 1111 · หมออร 2222 · พนักงาน 3333
           </p>
         )}
         <div className="userpick">

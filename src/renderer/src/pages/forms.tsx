@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CalendarPlus } from 'lucide-react'
-import { api, SPECIES, todayStr, addDays, addMonths, APPT_TOPICS, longDate } from '../api'
-import { Modal, Field, useAction, useApi, useSession } from '../ui'
+import { api, SPECIES, todayStr, addDays, addMonths, openDay, APPT_TOPICS, longDate } from '../api'
+import { Modal, Field, useAction, useApi, useSession, useClosedDays, ClosedDayWarning } from '../ui'
 
 export function CustomerForm(props: { initial?: any; onClose: () => void; onSaved: (id: string) => void }) {
   const [f, setF] = useState<any>({
@@ -190,6 +190,7 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
     pet_id: props.petId
   })
   const [nextAppt, setNextAppt] = useState<{ date: string; topic: string } | null>(null)
+  const closed = useClosedDays()
   const act = useAction()
   const set = (k: string, v: any): void => setF((x: any) => ({ ...x, [k]: v }))
   const save = async (bill: boolean): Promise<void> => {
@@ -263,7 +264,7 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
             ['14 วัน', addDays(todayStr(), 14)],
             ['1 เดือน', addMonths(todayStr(), 1)],
             ['1 ปี', addMonths(todayStr(), 12)]
-          ].map(([l, d]) => (
+          ].map(([l, d]) => [l, openDay(d, closed)]).map(([l, d]) => (
             <button key={l} className={`chip ${nextAppt?.date === d ? 'active' : ''}`} onClick={() => setNextAppt({ date: d, topic: nextAppt?.topic ?? 'ตรวจติดตามอาการ' })}>{l}</button>
           ))}
           <input type="date" style={{ width: 170 }} value={nextAppt?.date ?? ''} onChange={(e) => setNextAppt(e.target.value ? { date: e.target.value, topic: nextAppt?.topic ?? 'ตรวจติดตามอาการ' } : null)} />
@@ -277,6 +278,7 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
           )}
         </div>
         {nextAppt && <div className="small muted" style={{ marginTop: 6 }}>จะสร้างนัด "{nextAppt.topic}" {longDate(nextAppt.date)}</div>}
+        {nextAppt && <div style={{ marginTop: 6 }}><ClosedDayWarning date={nextAppt.date} closed={closed} onMove={(d) => setNextAppt({ ...nextAppt, date: d })} /></div>}
       </div>
     </Modal>
   )
@@ -284,6 +286,7 @@ export function VisitForm(props: { petId: string; pet?: any; initial?: any; onCl
 
 export function AppointmentForm(props: { pet?: any; initial?: any; onClose: () => void; onSaved: (id: string) => void }) {
   const [vets] = useApi<any[]>('users.vets')
+  const closed = useClosedDays()
   const [f, setF] = useState<any>({ appt_date: addDays(todayStr(), 7), topic: 'ตรวจติดตามอาการ', pet_id: props.pet?.id, ...(props.initial ?? {}) })
   const [q, setQ] = useState('')
   const [found, setFound] = useState<any[]>([])
@@ -298,7 +301,8 @@ export function AppointmentForm(props: { pet?: any; initial?: any; onClose: () =
     setFound(full.flatMap((c: any) => c.pets.map((p: any) => ({ ...p, owner_name: c.name, phone: c.phone }))))
   }
   const save = async (): Promise<void> => {
-    const id = await act(() => api<string>('appointments.save', { ...f, pet_id: pet?.id }), 'บันทึกนัดหมายแล้ว')
+    const vet_id = f.vet_id ?? (vets?.length === 1 && !f.id ? vets[0].id : undefined)
+    const id = await act(() => api<string>('appointments.save', { ...f, vet_id, pet_id: pet?.id }), 'บันทึกนัดหมายแล้ว')
     if (id) props.onSaved(id)
   }
   const base = todayStr()
@@ -343,7 +347,7 @@ export function AppointmentForm(props: { pet?: any; initial?: any; onClose: () =
             ['3 เดือน', addMonths(base, 3)],
             ['6 เดือน', addMonths(base, 6)],
             ['1 ปี', addMonths(base, 12)]
-          ].map(([l, d]) => (
+          ].map(([l, d]) => [l, openDay(d, closed)]).map(([l, d]) => (
             <button key={l} className={`chip ${f.appt_date === d ? 'active' : ''}`} onClick={() => set('appt_date', d)}>{l}</button>
           ))}
         </div>
@@ -356,13 +360,14 @@ export function AppointmentForm(props: { pet?: any; initial?: any; onClose: () =
           <input type="time" value={f.appt_time ?? ''} onChange={(e) => set('appt_time', e.target.value)} />
         </Field>
         <Field label="สัตวแพทย์">
-          <select key={vets?.length ?? 0} value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id ?? (vets?.length === 1 && !f.id ? vets[0].id : '')} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>
         </Field>
       </div>
       <div className="small muted">{longDate(f.appt_date)}</div>
+      <ClosedDayWarning date={f.appt_date} closed={closed} onMove={(d) => set('appt_date', d)} />
       <Field label="หัวข้อนัดหมาย" required>
         <div className="chips">
           {APPT_TOPICS.map((t) => (
@@ -427,7 +432,7 @@ export function VaccinationForm(props: { petId: string; onClose: () => void; onS
           <input value={f.lot_no ?? ''} onChange={(e) => set('lot_no', e.target.value)} />
         </Field>
         <Field label="สัตวแพทย์">
-          <select key={vets?.length ?? 0} value={f.vet_id ?? ''} onChange={(e) => set('vet_id', e.target.value)}>
+          <select key={vets?.length ?? 0} value={f.vet_id ?? (vets?.length === 1 && !f.id ? vets[0].id : '')} onChange={(e) => set('vet_id', e.target.value)}>
             <option value="">— ไม่ระบุ —</option>
             {vets?.map((v) => <option key={v.id} value={v.id}>{v.display_name}</option>)}
           </select>

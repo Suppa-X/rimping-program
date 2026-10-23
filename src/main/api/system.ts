@@ -16,6 +16,7 @@ const EDITABLE_SETTINGS = [
   'vat_rate',
   'vat_start_date',
   'receipt_footer',
+  'closed_weekdays',
   'backup_dir'
 ]
 
@@ -98,6 +99,8 @@ export const demoApi = {
     const products = all<any>("SELECT * FROM products WHERE active = 1 AND category <> 'boarding'")
     const customers = all<any>('SELECT c.id, (SELECT id FROM pets p WHERE p.customer_id = c.id LIMIT 1) AS pet_id FROM customers c')
     const owner = all<any>("SELECT id FROM users WHERE role = 'owner' LIMIT 1")[0]
+    const vet = all<any>('SELECT id FROM users WHERE is_vet = 1 AND active = 1 LIMIT 1')[0] ?? owner
+    const closed = getSetting('closed_weekdays').split(',').filter(Boolean).map(Number)
     if (!products.length || !customers.length || !owner) return 0
     let seed = 7
     const rnd = (): number => ((seed = (seed * 16807) % 2147483647) / 2147483647)
@@ -108,6 +111,7 @@ export const demoApi = {
       const start = new Date()
       start.setMonth(start.getMonth() - (a.months ?? 12))
       for (const d = new Date(start); d < new Date(new Date().toDateString()); d.setDate(d.getDate() + 1)) {
+        if (closed.includes(d.getDay())) continue
         if (d.getDay() === 0 && rnd() < 0.7) continue
         const monthsAgo = (Date.now() - d.getTime()) / (30 * 86400000)
         const growth = 1 + (12 - monthsAgo) * 0.025
@@ -125,13 +129,13 @@ export const demoApi = {
             const qty = p.category === 'medicine' ? 5 + Math.floor(rnd() * 10) : 1
             subtotal += qty * p.price
             cost += qty * p.avg_cost
-            return { id: uid(), invoice_id: id, seq: i + 1, product_id: p.id, name: p.name, category: p.category, unit: p.unit, qty, unit_price: p.price, discount: 0, line_total: qty * p.price, unit_cost: p.avg_cost, vat_type: p.vat_type, vet_id: p.needs_vet ? owner.id : null, created_at: time, updated_at: time }
+            return { id: uid(), invoice_id: id, seq: i + 1, product_id: p.id, name: p.name, category: p.category, unit: p.unit, qty, unit_price: p.price, discount: 0, line_total: qty * p.price, unit_cost: p.avg_cost, vat_type: p.vat_type, vet_id: p.needs_vet ? vet.id : null, created_at: time, updated_at: time }
           })
           const no = `${key}${String(nextCounter(`BILL${key}`)).padStart(3, '0')}`
           insert('invoices', { id, invoice_no: no, customer_id: c.id, pet_id: c.pet_id, status: 'paid', subtotal, total: subtotal, paid_amount: subtotal, cost_total: cost, created_by: owner.id, issued_at: time, created_at: time, updated_at: time })
           for (const it of items) insert('invoice_items', it)
           insert('payments', { id: uid(), invoice_id: id, customer_id: c.id, kind: 'payment', method: pick(['cash', 'cash', 'transfer', 'promptpay', 'card']), amount: subtotal, created_by: owner.id, paid_at: time, created_at: time, updated_at: time })
-          if (c.pet_id && rnd() < 0.5) insert('visits', { id: uid(), pet_id: c.pet_id, vet_id: owner.id, visit_date: day, subjective: 'ตรวจทั่วไป', invoice_id: id, created_at: time, updated_at: time })
+          if (c.pet_id && rnd() < 0.5) insert('visits', { id: uid(), pet_id: c.pet_id, vet_id: vet.id, visit_date: day, subjective: 'ตรวจทั่วไป', invoice_id: id, created_at: time, updated_at: time })
           made++
         }
       }

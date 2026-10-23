@@ -1,5 +1,5 @@
 // Demo data shared by the desktop demo (npm run demo) and the web demo (npm run web).
-// Demo accounts (PIN):  owner = 1111 (เจ้าของร้าน/หมอ) · manager = 2222 (ผู้จัดการ) · staff = 3333 (พนักงาน, ลดได้ 5%)
+// Demo accounts (PIN):  owner = 1111 (ประธานจันทนา) · vet = 2222 (หมออร) · staff = 3333 (พนักงาน, ลดได้ 5%)
 type Call = (m: string, a?: unknown) => Promise<any>
 
 export const daysAgo = (n: number): string => {
@@ -10,10 +10,11 @@ export const daysAgo = (n: number): string => {
 
 
 export async function seedDemo(call: Call, backupDir: string): Promise<void> {
-  await call('auth.setupOwner', { username: 'owner', display_name: 'หมอปิง (เจ้าของ)', pin: '1111', is_vet: true })
-  const me = await call('auth.login', { username: 'owner', pin: '1111' })
-  await call('users.save', { username: 'manager', display_name: 'พี่นก (ผู้จัดการ)', role: 'manager', pin: '2222', max_discount_pct: 20, is_vet: false })
-  await call('users.save', { username: 'staff', display_name: 'น้องฝน (หน้าร้าน)', role: 'staff', pin: '3333', max_discount_pct: 5, is_vet: false })
+  await call('auth.setupOwner', { username: 'owner', display_name: 'ประธานจันทนา', pin: '1111', is_vet: false })
+  await call('auth.login', { username: 'owner', pin: '1111' })
+  const vetId: string = await call('users.save', { username: 'vet', display_name: 'หมออร', role: 'vet', pin: '2222', max_discount_pct: 20, is_vet: true })
+  await call('users.save', { username: 'staff', display_name: 'พนักงานหน้าร้าน (ตัวอย่าง)', role: 'staff', pin: '3333', max_discount_pct: 5, is_vet: false })
+  const me = { id: vetId }
   await call('settings.save', {
     shop_address: '99 ถ.เจริญราษฎร์ ต.วัดเกต อ.เมือง จ.เชียงใหม่ 50000 (ตัวอย่าง)',
     shop_phone: '053-000-000',
@@ -142,7 +143,8 @@ export async function seedDemo(call: Call, backupDir: string): Promise<void> {
   // Appointments: today, tomorrow, and one missed.
   await call('appointments.save', { pet_id: somsri.pets[0], appt_date: daysAgo(0), appt_time: '14:00', topic: 'ตรวจติดตามอาการ', detail: 'ดูอาการท้องเสีย', vet_id: me.id })
   await call('appointments.save', { pet_id: pond.pets[0], appt_date: daysAgo(-1), appt_time: '10:30', topic: 'ทำหมัน', detail: 'งดอาหารและน้ำก่อนมา 8 ชั่วโมง', vet_id: me.id })
-  await call('appointments.save', { pet_id: nida.pets[1], appt_date: daysAgo(3), topic: 'นัดวัคซีน', detail: 'วัคซีนรวมแมวเข็มที่ 2' })
+  const missed = new Date(daysAgo(3) + 'T00:00:00').getDay() === 2 ? 4 : 3 // not on a Tuesday (closed)
+  await call('appointments.save', { pet_id: nida.pets[1], appt_date: daysAgo(missed), topic: 'นัดวัคซีน', detail: 'วัคซีนรวมแมวเข็มที่ 2' })
   // More bookings spread over the month so the calendar has something to show.
   const spread: [string, number, string, string][] = [
     [somchai.pets[0], 0, '10:00', 'นัดวัคซีน'],
@@ -154,15 +156,17 @@ export async function seedDemo(call: Call, backupDir: string): Promise<void> {
     [nida.pets[1], 13, '10:00', 'นัดวัคซีน'],
     [pond.pets[0], 20, '14:30', 'ตรวจติดตามอาการ']
   ]
-  for (const [pet_id, ahead, appt_time, topic] of spread)
-    await call('appointments.save', { pet_id, appt_date: daysAgo(-ahead), appt_time, topic, vet_id: me.id })
+  for (const [pet_id, ahead, appt_time, topic] of spread) {
+    const tuesday = new Date(daysAgo(-ahead) + 'T00:00:00').getDay() === 2 // the clinic is closed on Tuesdays
+    await call('appointments.save', { pet_id, appt_date: daysAgo(-ahead - (tuesday ? 1 : 0)), appt_time, topic, vet_id: me.id })
+  }
 }
 
 /** Put a few patients in today's queue (once per day) so the board shows each stage. */
 export async function seedQueue(call: Call): Promise<void> {
   if ((await call('queue.today')).length) return
   if (!(await call('shifts.current'))) await call('shifts.open', { opening_cash: 2000 })
-  const me = await call('auth.me')
+  const me = (await call('users.vets'))[0]
   const pets: any[] = []
   for (const c of await call('customers.search', { q: '', limit: 20 })) pets.push(...(await call('customers.get', { id: c.id })).pets)
   const plan = [

@@ -27,7 +27,7 @@ app.on('browser-window-created', async (_e, win: BrowserWindow) => {
   try {
     await wait(500)
     await shot('01-setup')
-    await call('auth.setupOwner', { username: 'owner', display_name: 'หมอปิง', pin: '1111', is_vet: true })
+    await call('auth.setupOwner', { username: 'owner', display_name: 'หมออร', pin: '1111', is_vet: true })
     await js('location.reload()')
     await wait(1200)
     await shot('02-login')

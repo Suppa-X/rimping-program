@@ -642,6 +642,7 @@ function seedDefaults(): void {
     vat_rate: '7',
     vat_start_date: '',
     receipt_footer: 'ขอบคุณที่ไว้วางใจ ริมปิงสัตวแพทย์ 🐾',
+    closed_weekdays: '2', // 0 = Sunday … 6 = Saturday; the clinic closes on Tuesdays
     backup_dir: ''
   }
   for (const [k, v] of Object.entries(defaults)) {

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarRange, ChevronLeft, ChevronRight, CalendarCheck, Stethoscope, Syringe, CalendarPlus, ListPlus } from 'lucide-react'
-import { api, money, todayStr, longDate } from '../api'
-import { useApi, useAction, Empty, SpeciesIcon } from '../ui'
+import { api, money, todayStr, longDate, isClosed, TH_DAYS } from '../api'
+import { useApi, useAction, useClosedDays, Empty, SpeciesIcon } from '../ui'
 import { AppointmentForm } from './forms'
 
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม']
@@ -17,6 +17,7 @@ export default function Calendar() {
   const [month, setMonth] = useState(today.slice(0, 7))
   const [picked, setPicked] = useState(today)
   const [booking, setBooking] = useState(false)
+  const closed = useClosedDays()
   const [days, reloadMonth] = useApi<Record<string, any>>('calendar.month', { month }, [month])
   const [day, reloadDay] = useApi<any>('calendar.day', { date: picked }, [picked])
 
@@ -65,13 +66,14 @@ export default function Calendar() {
             <span className="dotlabel gold">ยอดขาย {money(totals.sales)}</span>
           </div>
           <div className="cal-grid">
-            {WEEKDAYS.map((w, i) => <div key={w} className={`cal-wd ${i === 0 ? 'sun' : ''}`}>{w}</div>)}
+            {WEEKDAYS.map((w, i) => <div key={w} className={`cal-wd ${i === 0 ? 'sun' : ''} ${closed.includes(i) ? 'off' : ''}`}>{w}</div>)}
             {cells.map((d, i) => {
               if (!d) return <div key={`b${i}`} className="cal-cell blank" />
               const x = days?.[d]
               return (
-                <button key={d} className={`cal-cell ${d === today ? 'today' : ''} ${d === picked ? 'picked' : ''} ${d < today ? 'past' : ''}`} onClick={() => setPicked(d)}>
+                <button key={d} className={`cal-cell ${d === today ? 'today' : ''} ${d === picked ? 'picked' : ''} ${d < today ? 'past' : ''} ${isClosed(d, closed) ? 'off' : ''}`} onClick={() => setPicked(d)}>
                   <span className="cal-n">{Number(d.slice(8))}</span>
+                  {isClosed(d, closed) && <span className="cal-off">ร้านหยุด</span>}
                   {x?.appts ? <span className="cal-tag rose">นัด {x.appts}</span> : null}
                   {x?.queue ? <span className="cal-tag violet">ตรวจ {x.queue}</span> : null}
                   {x?.vaccines ? <span className="cal-tag green">วัคซีน {x.vaccines}</span> : null}
@@ -84,6 +86,7 @@ export default function Calendar() {
 
         <div className="card day-panel">
           <h2>{longDate(picked)}</h2>
+          {isClosed(picked, closed) && <div className="alert warn small">ร้านหยุดทุกวัน{closed.map((i) => TH_DAYS[i]).join(' / ')}</div>}
           <section>
             <h3><CalendarCheck size={18} /> นัดหมาย ({day?.appointments.length ?? 0})</h3>
             {day?.appointments.length === 0 && <Empty text="ไม่มีนัด" />}
