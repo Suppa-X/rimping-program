@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, CalendarRange, FolderHeart, Stethoscope, HandCoins, ShoppingBag, CalendarCheck, BookOpen, Menu,
+  LayoutDashboard, ArrowLeft, CalendarRange, FolderHeart, Stethoscope, HandCoins, ShoppingBag, CalendarCheck, BookOpen, Menu,
   Package, Wallet, Settings as SettingsIcon, LogOut, KeyRound, BedDouble, LineChart, ChevronDown, CircleAlert, Delete
 } from 'lucide-react'
 import logo from './assets/logo.png'
@@ -148,6 +148,12 @@ function Shell() {
         <div className="main">
           <header className="topbar">
             <button className="ghost burger" aria-label="เมนู" onClick={() => setDrawer((d) => !d)}><Menu /></button>
+            {location.pathname !== '/' && (
+              <button className="backbtn" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))}>
+                <span className="gem slate"><ArrowLeft /></span>
+                <span>ย้อนกลับ</span>
+              </button>
+            )}
             <div className="quickbar">
               {quick.map((t) => (
                 <NavLink key={t.to} to={t.to} className="quick" title={t.sub}>

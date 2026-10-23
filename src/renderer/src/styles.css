@@ -701,3 +701,22 @@ tr.clickable:hover td { background: var(--clinic-soft); }
   .reg-actions { grid-template-columns: minmax(0, 1fr); }
   .hero-pets svg { width: 140px; height: 140px; }
 }
+
+/* ---------- light mint sidebar, full logo, back button ---------- */
+.sidebar { background: #e6f4f1; color: var(--brand); border-right: 1.5px solid #cfe6e1; }
+.brand { border-bottom: 1.5px solid #cfe6e1; padding: 18px 16px 14px; }
+.brand .logo { width: 220px; height: auto; max-width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 28px; border: 0; padding: 6px; background: #fff; }
+.brand .sub { color: #2d6f68; font-weight: 600; }
+.nav-title { color: #0f8f86; }
+.nav-item { color: #1f3f66; }
+.nav-item:hover { background: rgba(255, 255, 255, 0.7); }
+.nav-item.active { background: #fff; color: var(--brand); }
+.nav-item.active::before { background: #0f8f86; }
+.nav-text small { color: #5f7f86; }
+.nav-item.active .nav-text small { color: #0f8f86; }
+.backbtn { flex-direction: column; gap: 4px; padding: 6px 12px; border-radius: 20px; background: transparent; color: var(--brand); font-size: 15px; font-weight: 500; }
+.backbtn .gem { width: 78px; height: 78px; border-radius: 24px; background: #64748b; }
+.backbtn .gem svg { width: 44px; height: 44px; }
+.backbtn:hover { background: var(--clinic-soft); filter: none; }
+@media (max-width: 1350px) { .backbtn .gem { width: 64px; height: 64px; } .backbtn .gem svg { width: 36px; height: 36px; } .backbtn > span:last-child { display: none; } }
+@media (max-width: 640px) { .backbtn .gem { width: 52px; height: 52px; border-radius: 16px; } .backbtn .gem svg { width: 30px; height: 30px; } .backbtn { padding: 4px; } }
