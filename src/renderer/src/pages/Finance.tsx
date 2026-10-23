@@ -10,11 +10,15 @@ import SpecialReports from './SpecialReports'
 export default function Finance() {
   const { can } = useSession()
   const [d] = useApi<any>('reports.dashboard')
-  const tab = useParams().tab ?? (can('reports') ? 'overview' : 'bills')
+  const tab = useParams().tab ?? (can('reports') ? 'overview' : can('finance') ? 'bills' : 'shift')
   const tabs = [
     ...(can('reports') ? [{ key: 'overview', label: 'ภาพรวม/รายงาน', icon: BarChart3 }] : []),
-    { key: 'bills', label: 'บิลทั้งหมด', icon: Receipt },
-    { key: 'outstanding', label: 'ค้างชำระ', icon: Clock3, count: d?.outstanding_count },
+    ...(can('finance')
+      ? [
+          { key: 'bills', label: 'บิลทั้งหมด', icon: Receipt },
+          { key: 'outstanding', label: 'ค้างชำระ', icon: Clock3, count: d?.outstanding_count }
+        ]
+      : []),
     { key: 'shift', label: 'กะ/ลิ้นชักเงิน', icon: Banknote },
     ...(can('reports') ? [{ key: 'registers', label: 'รายงานยาควบคุม/ปศุสัตว์/สต็อก', icon: FileSpreadsheet }] : [])
   ]

@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Search, UserPlus, ShoppingBag, Clock, Clock3, CreditCard, CheckCircle2, ListPlus, TrendingUp, Receipt, AlertTriangle,
-  ChevronRight, Banknote, CalendarCheck, Footprints
+  Search, UserPlus, UserCheck, ShoppingBag, Clock, Clock3, CreditCard, CheckCircle2, ListPlus, TrendingUp, Receipt, AlertTriangle,
+  ChevronRight, Banknote, CalendarCheck, ClipboardPlus, Dog, Cat, PawPrint, BedDouble
 } from 'lucide-react'
 import { api, money, thDate, todayStr, longDate, isClosed } from '../api'
 import { useApi, useAction, useSession, useClosedDays, Modal, Field, SpeciesIcon, Empty, initial } from '../ui'
-import { CustomerForm } from './forms'
+import { CustomerForm, PetForm } from './forms'
 import { payUrl } from './Exam'
 
 const REASONS = ['ตรวจรักษา', 'ฉีดวัคซีน', 'ตรวจติดตามอาการ', 'ทำแผล', 'ถ่ายพยาธิ/หยดเห็บหมัด', 'ซื้อยา/อาหาร']
@@ -22,6 +22,7 @@ export default function Home() {
   const [appts, reloadAppts] = useApi<any[]>('appointments.list', { from: todayStr(), to: todayStr() })
   const [enqueue, setEnqueue] = useState<any | null>(null)
   const [creating, setCreating] = useState(false)
+  const [addPetFor, setAddPetFor] = useState<{ id: string; name: string } | null>(null)
   const closed = useClosedDays()
 
   const reloadAll = (): void => {
@@ -56,17 +57,22 @@ export default function Home() {
   return (
     <>
       <div className="hero">
+        <div className="hero-pets" aria-hidden="true"><Dog /><Cat /><PawPrint /></div>
         <div className="hero-text">
           <div className="hero-date">{longDate(todayStr())}</div>
           <h1>สวัสดีครับ {me.display_name}</h1>
-          <div className="hero-sub">ลูกค้ามาถึง → ค้นหาชื่อแล้วกด "เข้าคิว" · ลูกค้าที่มีนัด กด "มาถึงแล้ว"</div>
+          <div className="hero-sub">ลูกค้ามาถึง → ลงประวัติแล้วลงคิวตรวจ · ลูกค้าที่มีนัด กด "มาถึงแล้ว"</div>
           {isClosed(todayStr(), closed) && <div className="hero-off">วันนี้เป็นวันหยุดประจำสัปดาห์ของร้าน</div>}
         </div>
         <div className="hero-kpis">
           <button className="kpi t-orange" onClick={() => nav('/exam')}><Clock /><b>{d?.queue_to_exam ?? 0}</b><span>รอตรวจ</span></button>
           <button className="kpi t-emerald" onClick={() => nav('/billing')}><CreditCard /><b>{d?.queue_to_pay ?? 0}</b><span>รอชำระ</span></button>
           <button className="kpi t-rose" onClick={() => nav('/appointments')}><CalendarCheck /><b>{pending.length}</b><span>นัดที่ยังไม่มา</span></button>
-          <button className="kpi t-gold" onClick={() => nav('/finance')}><TrendingUp /><b>{money(d?.sales_total ?? 0).replace(/\.00$/, '')}</b><span>ยอดขายวันนี้</span></button>
+          {d?.finance ? (
+            <button className="kpi t-gold" onClick={() => nav('/finance')}><TrendingUp /><b>{money(d.sales_total).replace(/\.00$/, '')}</b><span>ยอดขายวันนี้</span></button>
+          ) : (
+            <button className="kpi t-gold" onClick={() => nav('/admissions')}><BedDouble /><b>{d?.admitted ?? 0}</b><span>Admit / ฝากเลี้ยง</span></button>
+          )}
         </div>
       </div>
 
@@ -81,17 +87,22 @@ export default function Home() {
       <div className="arrive">
         <div className="card tinted sky">
           <div className="card-head">
-            <span className="gem sky"><Footprints /></span>
+            <span className="gem sky"><ClipboardPlus /></span>
             <div className="grow">
-              <h2>ลูกค้ามาเอง (Walk-in)</h2>
-              <div className="muted small">ลูกค้าเก่า: พิมพ์ชื่อ เบอร์ หรือชื่อสัตว์ แล้วกด "เข้าคิว" · ลูกค้าใหม่: กด "ลงทะเบียนลูกค้าใหม่"</div>
+              <h2>ลงประวัติ ลงคิวการตรวจ</h2>
+              <div className="muted small">ลูกค้าใหม่ กดปุ่มด้านล่าง · ลูกค้าเก่า พิมพ์ชื่อ เบอร์ หรือชื่อสัตว์ แล้วเลือกลูกค้า เพิ่มสัตว์เลี้ยง หรือลงคิวตรวจ</div>
             </div>
           </div>
-          <CustomerSearch onQueue={(pet) => setEnqueue(pet)} />
-          <div className="row" style={{ marginTop: 12 }}>
-            <button onClick={() => setCreating(true)}><UserPlus /> ลงทะเบียนลูกค้าใหม่</button>
-            <button className="secondary" onClick={() => nav('/shop')}><ShoppingBag /> ซื้อของอย่างเดียว (ไม่ตรวจ)</button>
+          <div className="reg-actions">
+            <button className="reg-new" onClick={() => setCreating(true)}>
+              <UserPlus /> <span><b>ลูกค้าใหม่</b><small>ลงประวัติเจ้าของ + สัตว์เลี้ยง แล้วลงคิว</small></span>
+            </button>
+            <button className="reg-shop secondary" onClick={() => nav('/shop')}>
+              <ShoppingBag /> <span><b>ซื้อของอย่างเดียว</b><small>ไม่ต้องตรวจ</small></span>
+            </button>
           </div>
+          <div className="reg-label">ลูกค้าเก่า</div>
+          <CustomerSearch onQueue={(pet) => setEnqueue(pet)} onAddPet={(c) => setAddPetFor(c)} />
         </div>
         <div className="card tinted rose">
           <div className="card-head">
@@ -131,7 +142,7 @@ export default function Home() {
         <Timeline queue={queue ?? []} appts={pending} hour={hour} onQueue={openQueue} onAppt={arrived} />
       </div>
 
-      {d && (
+      {d?.finance && (
         <div className="grid" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.2fr)', marginTop: 18 }}>
           <div className="grid g2">
             <div className="stat clickable" onClick={() => nav('/finance')}>
@@ -184,7 +195,29 @@ export default function Home() {
           }}
         />
       )}
-      {creating && <CustomerForm onClose={() => setCreating(false)} onSaved={(id) => nav(`/customers/${id}?newpet=1`)} />}
+      {creating && (
+        <CustomerForm
+          onClose={() => setCreating(false)}
+          onSaved={async (id) => {
+            setCreating(false)
+            const c = await api<any>('customers.get', { id })
+            setAddPetFor({ id, name: c.name })
+          }}
+        />
+      )}
+      {addPetFor && (
+        <PetForm
+          customerId={addPetFor.id}
+          onClose={() => setAddPetFor(null)}
+          onSaved={async (petId) => {
+            const owner = addPetFor
+            setAddPetFor(null)
+            const c = await api<any>('customers.get', { id: owner.id })
+            const pet = c.pets.find((p: any) => p.id === petId)
+            if (pet) setEnqueue({ ...pet, owner_name: c.name })
+          }}
+        />
+      )}
     </>
   )
 }
@@ -238,7 +271,7 @@ function ApptChip({ a, onClick }: { a: any; onClick: () => void }) {
   )
 }
 
-function CustomerSearch({ onQueue }: { onQueue: (pet: any) => void }) {
+function CustomerSearch({ onQueue, onAddPet }: { onQueue: (pet: any) => void; onAddPet: (c: { id: string; name: string }) => void }) {
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const [rows, setRows] = useState<any[]>([])
@@ -265,7 +298,7 @@ function CustomerSearch({ onQueue }: { onQueue: (pet: any) => void }) {
       <Search />
       <input
         autoFocus
-        placeholder="ค้นหาลูกค้า — พิมพ์ชื่อเจ้าของ เบอร์โทร หรือชื่อสัตว์เลี้ยง"
+        placeholder="ค้นหาลูกค้าเก่า — พิมพ์ชื่อเจ้าของ เบอร์โทร หรือชื่อสัตว์เลี้ยง"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => rows.length && setOpen(true)}
@@ -296,15 +329,16 @@ function CustomerSearch({ onQueue }: { onQueue: (pet: any) => void }) {
                       <b>{p.name}</b>
                       <span className="muted small">{p.species} {p.breed && `· ${p.breed}`}</span>
                       <div className="grow" />
-                      <button onClick={() => { setOpen(false); onQueue({ ...p, owner_name: c.name }) }}><ListPlus /> เข้าคิว (Walk-in)</button>
+                      <button onClick={() => { setOpen(false); onQueue({ ...p, owner_name: c.name }) }}><ListPlus /> ลงคิวตรวจ</button>
                       <button className="secondary" onClick={() => nav(`/pets/${p.id}`)}>ประวัติ</button>
                     </div>
                   ))}
                 </div>
               </div>
               <div className="stack" style={{ gap: 6 }}>
-                <button className="secondary" onClick={() => nav(`/pos?customer=${c.id}`)}><ShoppingBag /> ขายของ</button>
-                <button className="ghost" onClick={() => nav(`/customers/${c.id}`)}>ข้อมูลลูกค้า <ChevronRight /></button>
+                <button onClick={() => nav(`/customers/${c.id}`)}><UserCheck /> เลือกลูกค้านี้</button>
+                <button className="secondary" onClick={() => { setOpen(false); onAddPet({ id: c.id, name: c.name }) }}><PawPrint /> เพิ่มสัตว์เลี้ยง</button>
+                <button className="ghost" onClick={() => nav(`/shop?customer=${c.id}`)}><ShoppingBag /> ขายของ <ChevronRight /></button>
               </div>
             </div>
           ))}

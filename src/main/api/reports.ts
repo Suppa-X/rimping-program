@@ -1,5 +1,5 @@
 import { all, one, r2, today } from '../db'
-import { requirePerm, requireUser } from '../auth'
+import { requirePerm, requireUser, can } from '../auth'
 
 export const CATEGORY_LABEL: Record<string, string> = {
   service: 'ค่าบริการ/ค่าตรวจ',
@@ -139,7 +139,7 @@ export const reportsApi = {
   },
 
   'reports.dashboard': () => {
-    requireUser()
+    const u = requireUser()
     const d = today()
     const sales = one<any>(
       `SELECT COUNT(*) AS bills, COALESCE(SUM(total),0) AS total, COALESCE(SUM(total - paid_amount),0) AS unpaid
@@ -190,9 +190,12 @@ export const reportsApi = {
       d
     )!.n
     const admitted = one<{ n: number }>("SELECT COUNT(*) AS n FROM admissions WHERE status = 'admitted'")!.n
+    // Staff without 'finance' get the operational counts only, no money figures.
+    const money = can(u, 'finance')
     return {
       date: d,
-      last7,
+      finance: money,
+      last7: money ? last7 : [],
       appt_today: apptToday,
       appt_uncalled: apptUncalled,
       admitted,
@@ -200,17 +203,17 @@ export const reportsApi = {
       queue_to_exam: toExam,
       queue_to_pay: toPay,
       bills: sales.bills,
-      sales_total: r2(sales.total),
-      unpaid_today: r2(sales.unpaid),
-      received: Object.fromEntries(received.map((r) => [r.method, r2(r.amount)])),
+      sales_total: money ? r2(sales.total) : 0,
+      unpaid_today: money ? r2(sales.unpaid) : 0,
+      received: money ? Object.fromEntries(received.map((r) => [r.method, r2(r.amount)])) : {},
       outstanding_count: outstanding.n,
-      outstanding_amount: r2(outstanding.amount),
-      month_total: r2(month.total),
+      outstanding_amount: money ? r2(outstanding.amount) : 0,
+      month_total: money ? r2(month.total) : 0,
       month_bills: month.bills,
       visits_today: visitsToday,
       vaccines_due: dueSoon,
       low_stock: lowStock,
-      recent
+      recent: money ? recent : []
     }
   },
 

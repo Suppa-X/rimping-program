@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, CalendarRange, FolderHeart, Stethoscope, HandCoins, ShoppingBag, CalendarCheck, BookOpen, Menu,
-  Package, Wallet, Settings as SettingsIcon, LogOut, KeyRound, BedDouble, LineChart, ChevronDown, CircleCheck, CircleAlert, Delete
+  Package, Wallet, Settings as SettingsIcon, LogOut, KeyRound, BedDouble, LineChart, ChevronDown, CircleAlert, Delete
 } from 'lucide-react'
 import logo from './assets/logo.png'
-import { api, money, ROLE_LABEL, thDate, todayStr } from './api'
+import { api, ROLE_LABEL, todayStr, longDate } from './api'
 import { Me, SessionCtx, useAction, Field, initial } from './ui'
 import Home from './pages/Home'
 import Customers from './pages/Customers'
@@ -104,15 +104,15 @@ function Shell() {
       title: 'ร้านและการเงิน',
       items: [
         { to: '/products', icon: Package, label: 'คลังสินค้า', sub: 'สต็อก · รับเข้า', tone: 'bronze', badge: counts.low_stock },
-        { to: '/finance', icon: Wallet, label: 'การเงิน', sub: 'บิล · กะ · รายงาน', tone: 'jade' },
-        ...(can('reports') ? [{ to: '/executive', icon: LineChart, label: 'สรุปผู้บริหาร', sub: 'ยอดขาย · แนวโน้ม', tone: 'gold' }] : [])
+        ...(can('finance') ? [{ to: '/finance', icon: Wallet, label: 'การเงิน', sub: 'บิล · กะ · รายงาน', tone: 'jade' }] : []),
+        ...(can('reports') && can('finance') ? [{ to: '/executive', icon: LineChart, label: 'สรุปผู้บริหาร', sub: 'ยอดขาย · แนวโน้ม', tone: 'gold' }] : [])
       ]
     },
     {
       title: 'ช่วยเหลือ',
       items: [
         { to: '/help', icon: BookOpen, label: 'คู่มือการใช้งาน', sub: 'ทำอะไร กดตรงไหน', tone: 'sky' },
-        { to: '/settings', icon: SettingsIcon, label: 'ตั้งค่า', sub: 'ร้าน · ผู้ใช้ · ราคา', tone: 'slate' }
+        ...(can('settings') ? [{ to: '/settings', icon: SettingsIcon, label: 'ตั้งค่า', sub: 'ร้าน · ผู้ใช้ · ราคา', tone: 'slate' }] : [])
       ]
     }
   ]
@@ -123,11 +123,8 @@ function Shell() {
       <div className={`shell ${drawer ? 'drawer-open' : ''}`}>
         <aside className="sidebar">
           <div className="brand">
-            <img className="logo" src={logo} alt="" />
-            <div>
-              <div className="name">ริมปิงสัตวแพทย์</div>
-              <div className="sub">{thDate(todayStr())}</div>
-            </div>
+            <img className="logo" src={logo} alt="ริมปิงสัตวแพทย์" />
+            <div className="sub">{longDate(todayStr())}</div>
           </div>
           <nav>
             {groups.map((g) => (
@@ -161,11 +158,7 @@ function Shell() {
               ))}
             </div>
             <div className="grow" />
-            {shift ? (
-              <button className="pill on" onClick={() => nav('/finance/shift')}>
-                <CircleCheck size={16} /> <span className="pill-text">กะเปิดอยู่ · ลิ้นชัก </span>{money(shift.expected_cash)}
-              </button>
-            ) : (
+            {!shift && (
               <button className="pill off" onClick={() => nav('/finance/shift')}>
                 <CircleAlert size={16} /> ยังไม่เปิดกะ
               </button>
@@ -202,11 +195,12 @@ function Shell() {
                 <Route path="/admissions" element={<Admissions />} />
                 <Route path="/admissions/:id" element={<AdmissionDetail />} />
                 <Route path="/products" element={<Products />} />
-                <Route path="/finance" element={<Finance />} />
-                <Route path="/finance/:tab" element={<Finance />} />
+                <Route path="/finance" element={can('finance') ? <Finance /> : <NoAccess />} />
+                <Route path="/finance/shift" element={<Finance />} />
+                <Route path="/finance/:tab" element={can('finance') ? <Finance /> : <NoAccess />} />
                 <Route path="/invoices/:id" element={<InvoiceDetail />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/executive" element={<Executive />} />
+                <Route path="/executive" element={can('reports') && can('finance') ? <Executive /> : <NoAccess />} />
                 <Route path="/help" element={<Help />} />
               </Routes>
             </div>
@@ -214,6 +208,15 @@ function Shell() {
         </div>
       </div>
     </SessionCtx.Provider>
+  )
+}
+
+function NoAccess() {
+  return (
+    <div className="card center" style={{ padding: 40 }}>
+      <h2>หน้านี้สำหรับผู้บริหารและสัตวแพทย์</h2>
+      <div className="muted">บัญชีพนักงานใช้งานได้เฉพาะงานหน้าร้าน (ลงประวัติ คิว ตรวจ คิดเงิน ขาย จองนัด)</div>
+    </div>
   )
 }
 
@@ -256,7 +259,7 @@ function Login({ onLogin }: { onLogin: (m: Me) => void }) {
         <h2 className="center">เลือกชื่อของคุณ แล้วกดรหัส PIN</h2>
         {demo && (
           <p className="muted center" style={{ margin: 0 }}>
-            โหมดทดลอง — PIN: ประธานจันทนา 1111 · หมออร 2222 · พนักงาน 3333
+            โหมดทดลอง — PIN: CEO จันทนา 1111 · หมออร 2222 · พนักงาน 3333
           </p>
         )}
         <div className="userpick">

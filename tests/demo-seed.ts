@@ -1,5 +1,5 @@
 // Demo data shared by the desktop demo (npm run demo) and the web demo (npm run web).
-// Demo accounts (PIN):  owner = 1111 (ประธานจันทนา) · vet = 2222 (หมออร) · staff = 3333 (พนักงาน, ลดได้ 5%)
+// Demo accounts (PIN):  owner = 1111 (CEO จันทนา) · vet = 2222 (หมออร, full access too) · staff = 3333 (front desk only, no money screens)
 type Call = (m: string, a?: unknown) => Promise<any>
 
 export const daysAgo = (n: number): string => {
@@ -10,9 +10,9 @@ export const daysAgo = (n: number): string => {
 
 
 export async function seedDemo(call: Call, backupDir: string): Promise<void> {
-  await call('auth.setupOwner', { username: 'owner', display_name: 'ประธานจันทนา', pin: '1111', is_vet: false })
+  await call('auth.setupOwner', { username: 'owner', display_name: 'CEO จันทนา', pin: '1111', is_vet: false })
   await call('auth.login', { username: 'owner', pin: '1111' })
-  const vetId: string = await call('users.save', { username: 'vet', display_name: 'หมออร', role: 'vet', pin: '2222', max_discount_pct: 20, is_vet: true })
+  const vetId: string = await call('users.save', { username: 'vet', display_name: 'หมออร', role: 'owner', pin: '2222', max_discount_pct: 100, is_vet: true })
   await call('users.save', { username: 'staff', display_name: 'พนักงานหน้าร้าน (ตัวอย่าง)', role: 'staff', pin: '3333', max_discount_pct: 5, is_vet: false })
   const me = { id: vetId }
   await call('settings.save', {

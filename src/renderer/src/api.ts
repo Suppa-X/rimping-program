@@ -91,7 +91,7 @@ export const STATUS_LABEL: Record<string, string> = {
 export const SEX_LABEL: Record<string, string> = { M: 'ผู้', F: 'เมีย', U: 'ไม่ระบุ' }
 
 export const ROLE_LABEL: Record<string, string> = {
-  owner: 'เจ้าของร้าน',
+  owner: 'ผู้บริหาร (สิทธิ์เต็ม)',
   manager: 'ผู้จัดการร้าน',
   vet: 'สัตวแพทย์',
   staff: 'พนักงานหน้าร้าน'

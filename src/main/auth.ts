@@ -12,17 +12,18 @@ export interface SessionUser {
   is_vet: number
 }
 
-export type Perm = 'settings' | 'void' | 'stock.edit' | 'reports' | 'emr.edit' | 'shift'
+/** 'finance' = sales figures, the finance menu and executive numbers; front-desk staff work without it. */
+export type Perm = 'settings' | 'void' | 'stock.edit' | 'reports' | 'finance' | 'emr.edit' | 'shift'
 
 const ROLE_PERMS: Record<Role, Perm[]> = {
-  owner: ['settings', 'void', 'stock.edit', 'reports', 'emr.edit', 'shift'],
-  manager: ['void', 'stock.edit', 'reports', 'shift'],
-  vet: ['reports', 'emr.edit', 'shift'],
+  owner: ['settings', 'void', 'stock.edit', 'reports', 'finance', 'emr.edit', 'shift'],
+  manager: ['void', 'stock.edit', 'reports', 'finance', 'shift'],
+  vet: ['reports', 'finance', 'emr.edit', 'shift'],
   staff: ['shift']
 }
 
 export const ROLE_LABEL: Record<Role, string> = {
-  owner: 'เจ้าของร้าน',
+  owner: 'ผู้บริหาร (สิทธิ์เต็ม)',
   manager: 'ผู้จัดการร้าน',
   vet: 'สัตวแพทย์',
   staff: 'พนักงานหน้าร้าน'

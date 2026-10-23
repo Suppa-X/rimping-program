@@ -2,7 +2,7 @@ import { app, dialog, shell, BrowserWindow } from 'electron'
 import { join, extname, basename } from 'node:path'
 import { mkdirSync, copyFileSync, readFileSync } from 'node:fs'
 import { all, one, insert, update, uid, audit, tx, today, now, nextDocNo, nextPetCode } from '../db'
-import { requireUser, requirePerm } from '../auth'
+import { requireUser, requirePerm, can } from '../auth'
 
 function addDays(date: string, days: number): string {
   const d = new Date(date + 'T00:00:00')
@@ -466,7 +466,7 @@ export const clinicApi = {
   /* ---------- calendar ---------- */
   /** Per-day counts for a month ("2026-10"): appointments, queue visits, vaccines due and sales. */
   'calendar.month': (a: { month: string }) => {
-    requireUser()
+    const u = requireUser()
     const from = `${a.month}-01`
     const to = `${a.month}-31`
     const days: Record<string, any> = {}
@@ -484,7 +484,7 @@ export const clinicApi = {
       `SELECT x.next_due_date AS d, COUNT(*) AS n FROM vaccinations x JOIN pets p ON p.id = x.pet_id
        WHERE x.done_followup = 0 AND x.next_due_date BETWEEN ?1 AND ?2 AND p.deceased = 0 AND p.active = 1 GROUP BY x.next_due_date`, from, to))
       day(r.d).vaccines = r.n
-    for (const r of all<any>(
+    if (can(u, 'finance')) for (const r of all<any>(
       `SELECT date(issued_at) AS d, SUM(total) AS t FROM invoices WHERE date(issued_at) BETWEEN ?1 AND ?2 AND status <> 'void' GROUP BY date(issued_at)`, from, to))
       day(r.d).sales = r.t
     return days
