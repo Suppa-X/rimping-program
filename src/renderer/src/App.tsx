@@ -138,12 +138,9 @@ function Shell() {
               <div key={g.title} className="nav-group">
                 <div className="nav-title">{g.title}</div>
                 {g.items.map((t) => (
-                  <NavLink key={t.to} to={t.to} end={t.end} className="nav-item">
+                  <NavLink key={t.to} to={t.to} end={t.end} className="nav-item" title={t.sub}>
                     <span className={`gem ${t.tone}`}><t.icon /></span>
-                    <span className="nav-text">
-                      <b>{t.label}</b>
-                      {t.sub && <small>{t.sub}</small>}
-                    </span>
+                    <span className="nav-text"><b>{t.label}</b></span>
                     {t.badge ? <span className="nav-badge">{t.badge}</span> : null}
                   </NavLink>
                 ))}
@@ -156,9 +153,8 @@ function Shell() {
           <header className="topbar">
             <button className="ghost burger" aria-label="เมนู" onClick={() => setDrawer((d) => !d)}><Menu /></button>
             {location.pathname !== '/' && (
-              <button className="backbtn" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))}>
-                <span className="gem slate"><ArrowLeft /></span>
-                <span>ย้อนกลับ</span>
+              <button className="backpill secondary" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))}>
+                <ArrowLeft /> <span>ย้อนกลับ</span>
               </button>
             )}
             <div className="quickbar">

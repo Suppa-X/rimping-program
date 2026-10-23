@@ -820,3 +820,32 @@ button, a, .cal-cell, .tl-chip { touch-action: manipulation; -webkit-tap-highlig
   .appt-row > button, .day-row > button { flex: 1 0 100%; }
   .page-head > button.big { font-size: 16px; padding: 10px 14px; }
 }
+
+/* ---------- tidy icons: one place per job, consistent sizes ---------- */
+/* Desktop: the sidebar is the menu, so the duplicate icon row is hidden and the top bar stays slim. */
+@media (min-width: 1101px) {
+  .quickbar { display: none; }
+  .topbar { min-height: 68px; }
+}
+.sidebar .gem { width: 44px; height: 44px; border-radius: 14px; }
+.sidebar .gem svg { width: 25px; height: 25px; }
+.nav-item { padding: 7px 10px; gap: 12px; }
+.nav-text b { font-size: 16.5px; font-weight: 600; }
+.nav-title { padding: 16px 10px 6px; }
+.nav-group + .nav-group { border-top: 1px solid #d3e8e4; margin-top: 6px; }
+.title-ico .gem { width: 64px; height: 64px; border-radius: 20px; }
+.title-ico .gem svg { width: 36px; height: 36px; }
+.card-head .gem { width: 46px; height: 46px; border-radius: 14px; }
+.card-head .gem svg { width: 26px; height: 26px; }
+.backpill { padding: 9px 16px; border-radius: 999px; font-size: 15px; gap: 6px; }
+.backpill svg { width: 20px; height: 20px; }
+.quick .gem { width: 60px; height: 60px; border-radius: 18px; }
+.quick .gem svg { width: 33px; height: 33px; }
+@media (max-width: 640px) {
+  .backpill { padding: 8px 10px; }
+  .backpill span { display: none; }
+  .title-ico .gem { width: 50px; height: 50px; border-radius: 16px; }
+  .title-ico .gem svg { width: 28px; height: 28px; }
+  .quick .gem { width: 42px; height: 42px; border-radius: 13px; }
+  .quick .gem svg { width: 24px; height: 24px; }
+}
