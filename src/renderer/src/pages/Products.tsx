@@ -1,3 +1,4 @@
+import { Package } from 'lucide-react'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, money, thDate, CATEGORY_LABEL } from '../api'
@@ -25,7 +26,7 @@ export default function Products() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>สินค้า/บริการ และคลัง</h1>
+          <h1 className="title-ico"><span className="gem bronze"><Package /></span> สินค้า/บริการ และคลัง</h1>
           {editable && <div className="muted">มูลค่าสต็อกคงเหลือ (ราคาทุน) {money(stockValue)} บาท</div>}
         </div>
         {editable && <button onClick={() => setEdit({ category: 'medicine', unit: 'ชิ้น', track_stock: true, vat_type: 'vat' })}>➕ เพิ่มรายการ</button>}

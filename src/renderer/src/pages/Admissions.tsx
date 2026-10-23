@@ -16,7 +16,7 @@ export default function Admissions() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>Admit / ฝากเลี้ยง</h1>
+          <h1 className="title-ico"><span className="gem coral"><BedDouble /></span> Admit / ฝากเลี้ยง</h1>
           <div className="lead">สัตว์ที่นอนโรงพยาบาลหรือฝากเลี้ยง — ลงค่าใช้จ่ายทุกวัน แล้วคิดเงินรวมตอนรับกลับ</div>
         </div>
         <button className="big" onClick={() => setAdmitting(true)}><Plus /> รับ Admit / ฝากเลี้ยง</button>

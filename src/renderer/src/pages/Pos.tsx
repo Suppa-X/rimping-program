@@ -18,7 +18,7 @@ interface Line {
 }
 
 const CAT_COLOR: Record<string, string> = {
-  service: '#2b7bc4', procedure: '#6b4fc4', vaccine: '#c2416b', medicine: '#17895a', food: '#d9741c', supply: '#5a6b7c', other: '#5a6b7c'
+  service: '#2b7bc4', procedure: '#6b4fc4', vaccine: '#c2416b', medicine: '#17895a', food: '#d9741c', supply: '#5a6b7c', grooming: '#db2777', boarding: '#ea580c', other: '#5a6b7c'
 }
 const METHOD_ICON: Record<string, any> = { cash: Banknote, transfer: Landmark, promptpay: QrCode, card: CreditCard, deposit: Wallet }
 let lineKey = 1
@@ -233,7 +233,7 @@ export default function Pos({ shop = false }: { shop?: boolean }) {
                 {shown.map((p) => {
                   const inCart = lines.find((l) => l.product.id === p.id)
                   return (
-                    <button key={p.id} className="product-tile" style={inCart ? { borderColor: 'var(--blue)', background: 'var(--blue-soft)' } : undefined} onClick={() => add(p)}>
+                    <button key={p.id} className="product-tile" style={{ ['--cat' as any]: CAT_COLOR[p.category], ...(inCart ? { borderColor: 'var(--blue)', background: 'var(--blue-soft)' } : {}) }} onClick={() => add(p)}>
                       <span className="cat" style={{ color: CAT_COLOR[p.category] }}>{CATEGORY_LABEL[p.category]}</span>
                       <span>{p.name}</span>
                       <span className="p">{money(p.price)}</span>

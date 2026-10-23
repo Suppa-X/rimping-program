@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, UserPlus, Phone, Users } from 'lucide-react'
+import { Search, UserPlus, Phone, Users, FolderHeart } from 'lucide-react'
 import { api, money, thDate } from '../api'
 import { Empty, initial } from '../ui'
 import { CustomerForm } from './forms'
@@ -21,7 +21,7 @@ export default function Customers() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>ลูกค้า & สัตว์เลี้ยง</h1>
+          <h1 className="title-ico"><span className="gem teal"><FolderHeart /></span> ลูกค้า & สัตว์เลี้ยง</h1>
           <div className="lead">ทั้งหมด {rows.length} ราย · กดที่รายชื่อเพื่อดูประวัติ</div>
         </div>
         <button className="big" onClick={() => setCreating(true)}><UserPlus /> ลูกค้าใหม่</button>

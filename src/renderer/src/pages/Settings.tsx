@@ -1,3 +1,4 @@
+import { Settings as SettingsIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, thDate, todayStr, monthStart, ROLE_LABEL } from '../api'
@@ -11,7 +12,7 @@ export default function Settings() {
   return (
     <>
       <div className="page-head">
-        <div className="grow"><h1>ตั้งค่า</h1><div className="lead">ข้อมูลร้าน ภาษี ผู้ใช้งาน และการสำรองข้อมูล</div></div>
+        <div className="grow"><h1 className="title-ico"><span className="gem slate"><SettingsIcon /></span> ตั้งค่า</h1><div className="lead">ข้อมูลร้าน ภาษี ผู้ใช้งาน และการสำรองข้อมูล</div></div>
       </div>
       <div className="subtabs">
         {admin && <button className={tab === 'shop' ? 'active' : ''} onClick={() => setTab('shop')}>ข้อมูลร้าน & VAT</button>}

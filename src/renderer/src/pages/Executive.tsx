@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Lightbulb, Receipt, Users, Stethoscope, Wallet, BedDouble, Syringe, Table2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Lightbulb, Receipt, Users, Stethoscope, Wallet, BedDouble, Syringe, Table2, LineChart } from 'lucide-react'
 import { money, thDate, todayStr, addDays, addMonths, METHOD_LABEL } from '../api'
 import { useApi } from '../ui'
 import { BarChart, LineCompare, Spark } from '../charts'
@@ -75,7 +75,7 @@ export default function Executive() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>สรุปผู้บริหาร</h1>
+          <h1 className="title-ico"><span className="gem gold"><LineChart /></span> สรุปผู้บริหาร</h1>
           <div className="lead">ผลการดำเนินงานรายวัน รายเดือน และแนวโน้ม 12 เดือน พร้อมเปรียบเทียบอัตโนมัติ</div>
         </div>
       </div>

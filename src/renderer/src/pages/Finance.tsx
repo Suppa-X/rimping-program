@@ -1,5 +1,5 @@
 import { NavLink, useParams } from 'react-router-dom'
-import { BarChart3, Receipt, Clock3, Banknote, FileSpreadsheet } from 'lucide-react'
+import { BarChart3, Receipt, Clock3, Banknote, FileSpreadsheet, Wallet } from 'lucide-react'
 import { useApi, useSession } from '../ui'
 import Reports from './Reports'
 import Invoices from './Invoices'
@@ -22,7 +22,7 @@ export default function Finance() {
     <>
       <div className="page-head">
         <div className="grow">
-          <h1>การเงิน</h1>
+          <h1 className="title-ico"><span className="gem jade"><Wallet /></span> การเงิน</h1>
           <div className="lead">ยอดขาย บิล ลูกค้าค้างชำระ และการเปิด/ปิดกะ</div>
         </div>
       </div>
